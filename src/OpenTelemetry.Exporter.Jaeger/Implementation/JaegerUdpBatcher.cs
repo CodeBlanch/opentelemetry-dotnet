@@ -15,6 +15,7 @@
 // </copyright>
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using OpenTelemetry.Resources;
@@ -139,7 +140,7 @@ namespace OpenTelemetry.Exporter.Jaeger.Implementation
 
                 try
                 {
-                    await this.SendAsync(this.process, this.currentBatch, cancellationToken).ConfigureAwait(false);
+                    await this.SendAsync(this.currentBatch, cancellationToken).ConfigureAwait(false);
                 }
                 finally
                 {
@@ -157,18 +158,31 @@ namespace OpenTelemetry.Exporter.Jaeger.Implementation
 
         public virtual Task<int> CloseAsync(CancellationToken cancellationToken) => this.FlushAsync(cancellationToken);
 
+        public IEnumerable<Batch> BuildBatchesToTransmit(IEnumerable<JaegerSpan> spans)
+        {
+            return spans
+                .GroupBy(s => s.JaegerTags.FirstOrDefault(t => t.Key == "peer.service")?.VStr)
+                .Select(g => new Batch(
+                    g.Key == null
+                        ? this.process
+                        : new Process(g.Key, this.process.Tags),
+                    g));
+        }
+
         public void Dispose()
         {
             // Do not change this code. Put cleanup code in Dispose(bool disposing).
             this.Dispose(true);
         }
 
-        protected async Task SendAsync(Process process, List<JaegerSpan> spans, CancellationToken cancellationToken)
+        protected async Task SendAsync(List<JaegerSpan> spans, CancellationToken cancellationToken)
         {
             try
             {
-                var batch = new Batch(process, spans);
-                await this.thriftClient.EmitBatchAsync(batch, cancellationToken).ConfigureAwait(false);
+                foreach (var batch in this.BuildBatchesToTransmit(spans))
+                {
+                    await this.thriftClient.EmitBatchAsync(batch, cancellationToken).ConfigureAwait(false);
+                }
             }
             catch (Exception ex)
             {

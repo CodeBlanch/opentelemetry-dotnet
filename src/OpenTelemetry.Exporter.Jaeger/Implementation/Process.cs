@@ -32,20 +32,24 @@ namespace OpenTelemetry.Exporter.Jaeger.Implementation
         }
 
         public Process(string serviceName, IDictionary<string, object> processTags)
+            : this(serviceName, processTags?.Select(pt => pt.ToJaegerTag()))
+        {
+        }
+
+        public Process(string serviceName, IEnumerable<JaegerTag> processTags)
             : this()
         {
             this.ServiceName = serviceName;
 
             if (processTags != null)
             {
-                this.Tags = new List<JaegerTag>();
-                this.Tags.AddRange(processTags.Select(pt => pt.ToJaegerTag()));
+                this.Tags = processTags;
             }
         }
 
         public string ServiceName { get; set; }
 
-        public List<JaegerTag> Tags { get; set; }
+        public IEnumerable<JaegerTag> Tags { get; set; }
 
         public Resource LibraryResource { get; private set; }
 
@@ -119,7 +123,7 @@ namespace OpenTelemetry.Exporter.Jaeger.Implementation
 
                     await oprot.WriteFieldBeginAsync(field, cancellationToken);
                     {
-                        await oprot.WriteListBeginAsync(new TList(TType.Struct, this.Tags.Count), cancellationToken);
+                        await oprot.WriteListBeginAsync(new TList(TType.Struct, this.Tags.Count()), cancellationToken);
 
                         foreach (JaegerTag jt in this.Tags)
                         {
