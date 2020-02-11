@@ -382,7 +382,6 @@ namespace OpenTelemetry.Exporter.Jaeger.Tests.Implementation
             Assert.Equal("RemoteServiceName", tag.VStr);
         }
 
-        internal static SpanData CreateTestSpan(
         [Fact]
         public void JaegerSpanConverterTest_ConvertSpanToJaegerSpan_LibraryResources()
         {
@@ -400,7 +399,7 @@ namespace OpenTelemetry.Exporter.Jaeger.Tests.Implementation
             Assert.DoesNotContain(jaegerSpan.JaegerTags, t => t.Key == Resource.ServiceNameKey && t.VStr == "MyService");
         }
 
-        internal SpanData CreateTestSpan(
+        internal static SpanData CreateTestSpan(
             bool setAttributes = true,
             Dictionary<string, object> additionalAttributes = null,
             bool addEvents = true,

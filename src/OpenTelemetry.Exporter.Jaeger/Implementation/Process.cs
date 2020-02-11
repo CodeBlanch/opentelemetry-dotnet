@@ -36,20 +36,20 @@ namespace OpenTelemetry.Exporter.Jaeger.Implementation
         {
         }
 
-        public Process(string serviceName, IEnumerable<JaegerTag> processTags)
+        internal Process(string serviceName, IEnumerable<JaegerTag> processTags)
             : this()
         {
             this.ServiceName = serviceName;
 
             if (processTags != null)
             {
-                this.Tags = processTags;
+                this.Tags = new List<JaegerTag>(processTags);
             }
         }
 
         public string ServiceName { get; set; }
 
-        public IEnumerable<JaegerTag> Tags { get; set; }
+        public List<JaegerTag> Tags { get; set; }
 
         public Resource LibraryResource { get; private set; }
 
