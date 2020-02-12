@@ -30,7 +30,7 @@ namespace OpenTelemetry.Collector.Dependencies
         /// Initializes a new instance of the <see cref="SqlClientCollector"/> class.
         /// </summary>
         /// <param name="tracer">Tracer to record traced with.</param>
-        public SqlClientCollector(ITracer tracer)
+        public SqlClientCollector(Tracer tracer)
         {
             this.diagnosticSourceSubscriber = new DiagnosticSourceSubscriber(
                name => new SqlClientDiagnosticListener(name, tracer),

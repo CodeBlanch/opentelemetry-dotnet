@@ -230,7 +230,7 @@ namespace OpenTelemetry.Trace
         /// <param name="span">Span to fill out.</param>
         /// <param name="type">Database type.</param>
         /// <returns>Span with populated request size properties.</returns>
-        public static ISpan PutDatabaseTypeAttribute(this ISpan span, string type)
+        public static TelemetrySpan PutDatabaseTypeAttribute(this TelemetrySpan span, string type)
         {
             span.SetAttribute(SpanAttributeConstants.DatabaseType, type);
             return span;
@@ -243,7 +243,7 @@ namespace OpenTelemetry.Trace
         /// <param name="span">Span to fill out.</param>
         /// <param name="instance">Database instance.</param>
         /// <returns>Span with populated request size properties.</returns>
-        public static ISpan PutDatabaseInstanceAttribute(this ISpan span, string instance)
+        public static TelemetrySpan PutDatabaseInstanceAttribute(this TelemetrySpan span, string instance)
         {
             span.SetAttribute(SpanAttributeConstants.DatabaseInstance, instance);
             return span;
@@ -256,7 +256,7 @@ namespace OpenTelemetry.Trace
         /// <param name="span">Span to fill out.</param>
         /// <param name="statement">Database type.</param>
         /// <returns>Span with populated request size properties.</returns>
-        public static ISpan PutDatabaseStatementAttribute(this ISpan span, string statement)
+        public static TelemetrySpan PutDatabaseStatementAttribute(this TelemetrySpan span, string statement)
         {
             span.SetAttribute(SpanAttributeConstants.DatabaseStatement, statement);
             return span;

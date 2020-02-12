@@ -28,7 +28,7 @@ namespace OpenTelemetry.Collector.Dependencies.Implementation
         private readonly PropertyFetcher commandTextFetcher = new PropertyFetcher("CommandText");
         private readonly PropertyFetcher exceptionFetcher = new PropertyFetcher("Exception");
 
-        public SqlClientDiagnosticListener(string sourceName, ITracer tracer)
+        public SqlClientDiagnosticListener(string sourceName, Tracer tracer)
             : base(sourceName, tracer)
         {
         }
@@ -67,12 +67,12 @@ namespace OpenTelemetry.Collector.Dependencies.Implementation
 
                         this.Tracer.StartActiveSpan(database.ToString(), SpanKind.Client, out var span);
 
-                        span.PutComponentAttribute("SQL Server");
+                        span.PutComponentAttribute("sql");
 
                         span.PutDatabaseTypeAttribute("sql");
-                        span.PutDatabaseInstanceAttribute(database.ToString());
-                        span.PutDatabaseStatementAttribute(commandText.ToString());
-                        span.SetAttribute("peer.address", dataSource.ToString());
+                        span.PutDatabaseInstanceAttribute((string)database);
+                        span.PutDatabaseStatementAttribute((string)commandText);
+                        span.SetAttribute("peer.address", (string)dataSource);
                     }
 
                     break;
@@ -81,7 +81,7 @@ namespace OpenTelemetry.Collector.Dependencies.Implementation
                     {
                         var span = this.Tracer.CurrentSpan;
 
-                        if (span == null || span == BlankSpan.Instance)
+                        if (span == null)
                         {
                             CollectorEventSource.Log.NullOrBlankSpan(nameof(SqlClientDiagnosticListener) + name);
                             return;
@@ -96,7 +96,7 @@ namespace OpenTelemetry.Collector.Dependencies.Implementation
                     {
                         var span = this.Tracer.CurrentSpan;
 
-                        if (span == null || span == BlankSpan.Instance)
+                        if (span == null)
                         {
                             CollectorEventSource.Log.NullOrBlankSpan(nameof(SqlClientDiagnosticListener) + name);
                             return;
