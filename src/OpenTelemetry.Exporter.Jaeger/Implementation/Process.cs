@@ -13,13 +13,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // </copyright>
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using OpenTelemetry.Resources;
 using Thrift.Protocols;
 using Thrift.Protocols.Entities;
 
@@ -32,68 +30,24 @@ namespace OpenTelemetry.Exporter.Jaeger.Implementation
         }
 
         public Process(string serviceName, IDictionary<string, object> processTags)
-            : this(serviceName, processTags?.Select(pt => pt.ToJaegerTag()))
+            : this(serviceName, processTags?.Select(pt => pt.ToJaegerTag()).ToDictionary(pt => pt.Key, pt => pt))
         {
         }
 
-        internal Process(string serviceName, IEnumerable<JaegerTag> processTags)
+        internal Process(string serviceName, IDictionary<string, JaegerTag> processTags)
             : this()
         {
             this.ServiceName = serviceName;
 
             if (processTags != null)
             {
-                this.Tags = new List<JaegerTag>(processTags);
+                this.Tags = processTags;
             }
         }
 
         public string ServiceName { get; set; }
 
-        public List<JaegerTag> Tags { get; set; }
-
-        public Resource LibraryResource { get; private set; }
-
-        public void ApplyLibraryResource(Resource libraryResource)
-        {
-            string serviceName = null;
-            string serviceNamespace = null;
-            foreach (var label in libraryResource?.Attributes ?? Array.Empty<KeyValuePair<string, object>>())
-            {
-                string key = label.Key;
-
-                if (label.Value is string strVal)
-                {
-                    switch (key)
-                    {
-                        case Resource.ServiceNameKey:
-                            serviceName = strVal;
-                            continue;
-                        case Resource.ServiceNamespaceKey:
-                            serviceNamespace = strVal;
-                            continue;
-                        case Resource.LibraryNameKey:
-                        case Resource.LibraryVersionKey:
-                            continue;
-                    }
-                }
-
-                if (this.Tags == null)
-                {
-                    this.Tags = new List<JaegerTag>();
-                }
-
-                this.Tags.Add(label.ToJaegerTag());
-            }
-
-            if (serviceName != null)
-            {
-                this.ServiceName = serviceNamespace != null
-                    ? serviceNamespace + "." + serviceName
-                    : serviceName;
-            }
-
-            this.LibraryResource = libraryResource;
-        }
+        public IDictionary<string, JaegerTag> Tags { get; set; }
 
         public async Task WriteAsync(TProtocol oprot, CancellationToken cancellationToken)
         {
@@ -125,9 +79,9 @@ namespace OpenTelemetry.Exporter.Jaeger.Implementation
                     {
                         await oprot.WriteListBeginAsync(new TList(TType.Struct, this.Tags.Count()), cancellationToken);
 
-                        foreach (JaegerTag jt in this.Tags)
+                        foreach (var jt in this.Tags)
                         {
-                            await jt.WriteAsync(oprot, cancellationToken);
+                            await jt.Value.WriteAsync(oprot, cancellationToken);
                         }
 
                         await oprot.WriteListEndAsync(cancellationToken);
