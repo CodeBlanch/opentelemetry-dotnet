@@ -115,6 +115,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OpenTelemetry.Exporter.Web"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OpenTelemetry.Exporter.Zipkin.Tests", "test\OpenTelemetry.Exporter.Zipkin.Tests\OpenTelemetry.Exporter.Zipkin.Tests.csproj", "{1D778D2E-9523-450E-A6E0-A36897C7E78E}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CoStar.OpenTelemetry.Experimental", "src\CoStar.OpenTelemetry.Experimental\CoStar.OpenTelemetry.Experimental.csproj", "{403D7605-CA38-464B-85EF-AB3FE8524679}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -265,6 +267,10 @@ Global
 		{1D778D2E-9523-450E-A6E0-A36897C7E78E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1D778D2E-9523-450E-A6E0-A36897C7E78E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1D778D2E-9523-450E-A6E0-A36897C7E78E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{403D7605-CA38-464B-85EF-AB3FE8524679}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{403D7605-CA38-464B-85EF-AB3FE8524679}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{403D7605-CA38-464B-85EF-AB3FE8524679}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{403D7605-CA38-464B-85EF-AB3FE8524679}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
