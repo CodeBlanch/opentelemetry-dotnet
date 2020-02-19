@@ -1,4 +1,4 @@
-﻿// <copyright file="ZipkinAnnotation.cs" company="OpenTelemetry Authors">
+﻿// <copyright file="Program.cs" company="OpenTelemetry Authors">
 // Copyright 2018, OpenTelemetry Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,13 +13,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // </copyright>
-namespace OpenTelemetry.Exporter.Zipkin.Implementation
-{
-    internal class ZipkinAnnotation
-    {
-        public long Timestamp { get; set; }
+using BenchmarkDotNet.Running;
 
-        public string Value { get; set; }
-#endif
+namespace Benchmarks
+{
+    internal static class Program
+    {
+        public static void Main(string[] args)
+        {
+            BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+        }
     }
 }

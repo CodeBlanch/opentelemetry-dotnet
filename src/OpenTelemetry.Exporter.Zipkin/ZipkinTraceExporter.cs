@@ -15,17 +15,14 @@
 // </copyright>
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Sockets;
-using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-#if NETSTANDARD2_0
-using System.Text.Json;
-#else
-using Newtonsoft.Json;
-#endif
 using OpenTelemetry.Exporter.Zipkin.Implementation;
 using OpenTelemetry.Trace.Export;
 
@@ -40,12 +37,10 @@ namespace OpenTelemetry.Exporter.Zipkin
         private const long NanosPerMillisecond = 1000 * 1000;
         private const long NanosPerSecond = NanosPerMillisecond * MillisPerSecond;
 
-#if NETSTANDARD2_0
         private static readonly JsonSerializerOptions Options = new JsonSerializerOptions
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         };
-#endif
 
         private readonly ZipkinTraceExporterOptions options;
         private readonly ZipkinEndpoint localEndpoint;
@@ -149,21 +144,7 @@ namespace OpenTelemetry.Exporter.Zipkin
 
         private HttpContent GetRequestContent(IEnumerable<ZipkinSpan> toSerialize)
         {
-            var content = string.Empty;
-            try
-            {
-#if NETSTANDARD2_0
-                content = JsonSerializer.Serialize(toSerialize, Options);
-#else
-                content = JsonConvert.SerializeObject(toSerialize);
-#endif
-            }
-            catch (Exception)
-            {
-                // Ignored
-            }
-
-            return new StringContent(content, Encoding.UTF8, "application/json");
+            return new JsonContent(toSerialize, Options);
         }
 
         private ZipkinEndpoint GetLocalZipkinEndpoint()
@@ -239,6 +220,35 @@ namespace OpenTelemetry.Exporter.Zipkin
             }
 
             return result;
+        }
+
+        private class JsonContent : HttpContent
+        {
+            private static readonly MediaTypeHeaderValue JsonHeader = new MediaTypeHeaderValue("application/json")
+            {
+                CharSet = "utf-8",
+            };
+
+            private readonly IEnumerable<ZipkinSpan> spans;
+            private readonly JsonSerializerOptions options;
+
+            public JsonContent(IEnumerable<ZipkinSpan> spans, JsonSerializerOptions options)
+            {
+                this.spans = spans;
+                this.options = options;
+
+                this.Headers.ContentType = JsonHeader;
+            }
+
+            protected override async Task SerializeToStreamAsync(Stream stream, TransportContext context)
+                => await JsonSerializer.SerializeAsync(stream, this.spans, this.options).ConfigureAwait(false);
+
+            protected override bool TryComputeLength(out long length)
+            {
+                // We can't know the length of the content being pushed to the output stream.
+                length = -1;
+                return false;
+            }
         }
     }
 }
