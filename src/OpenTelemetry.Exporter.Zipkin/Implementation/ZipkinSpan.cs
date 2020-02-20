@@ -47,7 +47,6 @@ namespace OpenTelemetry.Exporter.Zipkin.Implementation
         public bool Debug { get; set; }
 
         public bool Shared { get; set; }
-#endif
 
         public static Builder NewBuilder()
         {

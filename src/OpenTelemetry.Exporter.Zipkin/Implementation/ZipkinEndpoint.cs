@@ -24,6 +24,5 @@ namespace OpenTelemetry.Exporter.Zipkin.Implementation
         public string Ipv6 { get; set; }
 
         public int Port { get; set; }
-#endif
     }
 }

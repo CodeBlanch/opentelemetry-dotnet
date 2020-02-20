@@ -20,6 +20,5 @@ namespace OpenTelemetry.Exporter.Zipkin.Implementation
         public long Timestamp { get; set; }
 
         public string Value { get; set; }
-#endif
     }
 }
