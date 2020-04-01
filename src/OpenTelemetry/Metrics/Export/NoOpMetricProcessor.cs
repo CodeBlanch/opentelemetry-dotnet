@@ -20,27 +20,11 @@ namespace OpenTelemetry.Metrics.Export
 {
     internal class NoOpMetricProcessor : MetricProcessor
     {
-        public override void ProcessCounter(string meterName, string metricName, LabelSet labelSet, CounterSumAggregator<long> sumAggregator)
+        public override void Process(string meterName, string metricName, LabelSet labelSet, Aggregator<long> aggregator)
         {
         }
 
-        public override void ProcessCounter(string meterName, string metricName, LabelSet labelSet, CounterSumAggregator<double> sumAggregator)
-        {
-        }
-
-        public override void ProcessMeasure(string meterName, string metricName, LabelSet labelSet, MeasureExactAggregator<long> measureAggregator)
-        {
-        }
-
-        public override void ProcessMeasure(string meterName, string metricName, LabelSet labelSet, MeasureExactAggregator<double> measureAggregator)
-        {
-        }
-
-        public override void ProcessObserver(string meterName, string metricName, LabelSet labelSet, LastValueAggregator<long> lastValueAggregator)
-        {
-        }
-
-        public override void ProcessObserver(string meterName, string metricName, LabelSet labelSet, LastValueAggregator<double> lastValueAggregator)
+        public override void Process(string meterName, string metricName, LabelSet labelSet, Aggregator<double> aggregator)
         {
         }
     }

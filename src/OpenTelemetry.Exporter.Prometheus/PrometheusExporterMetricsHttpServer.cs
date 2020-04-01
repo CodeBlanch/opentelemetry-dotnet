@@ -20,6 +20,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using OpenTelemetry.Exporter.Prometheus.Implementation;
+using OpenTelemetry.Metrics.Export;
 
 namespace OpenTelemetry.Exporter.Prometheus
 {
@@ -112,32 +113,9 @@ namespace OpenTelemetry.Exporter.Prometheus
                     ctx.Response.StatusCode = 200;
                     ctx.Response.ContentType = PrometheusMetricBuilder.ContentType;
 
-                    using (var output = ctx.Response.OutputStream)
-                    {
-                        using (var writer = new StreamWriter(output))
-                        {
-                            foreach (var metric in this.exporter.Metrics)
-                            {
-                                var labels = metric.Labels;
-                                var value = metric.Value;
-
-                                var builder = new PrometheusMetricBuilder()
-                                    .WithName(metric.MetricName)
-                                    .WithDescription(metric.MetricDescription);
-
-                                builder = builder.WithType("counter");
-
-                                foreach (var label in labels)
-                                {
-                                    var metricValueBuilder = builder.AddValue();
-                                    metricValueBuilder = metricValueBuilder.WithValue(value);
-                                    metricValueBuilder.WithLabel(label.Key, label.Value);
-                                }
-
-                                builder.Write(writer);
-                            }
-                        }
-                    }
+                    using var output = ctx.Response.OutputStream;
+                    using var writer = new StreamWriter(output);
+                    this.exporter.WriteMetricsCollection(writer);
                 }
             }
             catch (OperationCanceledException)

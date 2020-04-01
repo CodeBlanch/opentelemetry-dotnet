@@ -24,6 +24,8 @@ namespace OpenTelemetry.Collector.Dependencies
     /// </summary>
     public class SqlClientCollector : IDisposable
     {
+        internal const string SqlClientDiagnosticListenerName = "SqlClientDiagnosticListener";
+
         private readonly DiagnosticSourceSubscriber diagnosticSourceSubscriber;
 
         /// <summary>
@@ -31,10 +33,20 @@ namespace OpenTelemetry.Collector.Dependencies
         /// </summary>
         /// <param name="tracer">Tracer to record traced with.</param>
         public SqlClientCollector(Tracer tracer)
+            : this(tracer, new SqlClientCollectorOptions())
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SqlClientCollector"/> class.
+        /// </summary>
+        /// <param name="tracer">Tracer to record traced with.</param>
+        /// <param name="options">Configuration options for sql collector.</param>
+        public SqlClientCollector(Tracer tracer, SqlClientCollectorOptions options)
         {
             this.diagnosticSourceSubscriber = new DiagnosticSourceSubscriber(
-               name => new SqlClientDiagnosticListener(name, tracer),
-               listener => listener.Name.Contains("SqlClient"),
+               name => new SqlClientDiagnosticListener(name, tracer, options),
+               listener => listener.Name == SqlClientDiagnosticListenerName,
                null);
             this.diagnosticSourceSubscriber.Subscribe();
         }

@@ -35,6 +35,19 @@ namespace OpenTelemetry.Trace
         }
 
         /// <summary>
+        /// Helper method that populates span properties from component
+        /// to https://github.com/open-telemetry/opentelemetry-specification/blob/2316771e7e0ca3bfe9b2286d13e3a41ded6b8858/specification/data-span-general.md.
+        /// </summary>
+        /// <param name="span">Span to fill out.</param>
+        /// <param name="peerService">Peer service.</param>
+        /// <returns>Span with populated http method properties.</returns>
+        public static TelemetrySpan PutPeerServiceAttribute(this TelemetrySpan span, string peerService)
+        {
+            span.SetAttribute(SpanAttributeConstants.PeerServiceKey, peerService);
+            return span;
+        }
+
+        /// <summary>
         /// Helper method that populates span properties from http method according
         /// to https://github.com/open-telemetry/opentelemetry-specification/blob/2316771e7e0ca3bfe9b2286d13e3a41ded6b8858/specification/data-http.md.
         /// </summary>
@@ -158,51 +171,43 @@ namespace OpenTelemetry.Trace
         {
             span.PutHttpStatusCodeAttribute(statusCode);
 
-            var newStatus = Status.Ok;
+            var newStatus = Status.Unknown;
 
-            if ((int)statusCode < 200)
-            {
-                newStatus = Status.Unknown;
-            }
-            else if ((int)statusCode >= 200 && (int)statusCode <= 399)
+            if (statusCode >= 200 && statusCode <= 399)
             {
                 newStatus = Status.Ok;
             }
-            else if ((int)statusCode == 400)
+            else if (statusCode == 400)
             {
                 newStatus = Status.InvalidArgument;
             }
-            else if ((int)statusCode == 401)
+            else if (statusCode == 401)
             {
                 newStatus = Status.Unauthenticated;
             }
-            else if ((int)statusCode == 403)
+            else if (statusCode == 403)
             {
                 newStatus = Status.PermissionDenied;
             }
-            else if ((int)statusCode == 404)
+            else if (statusCode == 404)
             {
                 newStatus = Status.NotFound;
             }
-            else if ((int)statusCode == 429)
+            else if (statusCode == 429)
             {
                 newStatus = Status.ResourceExhausted;
             }
-            else if ((int)statusCode == 501)
+            else if (statusCode == 501)
             {
                 newStatus = Status.Unimplemented;
             }
-            else if ((int)statusCode == 503)
+            else if (statusCode == 503)
             {
                 newStatus = Status.Unavailable;
             }
-            else if ((int)statusCode == 504)
+            else if (statusCode == 504)
             {
                 newStatus = Status.DeadlineExceeded;
-            }
-            else
-            {
-                newStatus = Status.Unknown;
             }
 
             span.Status = newStatus.WithDescription(reasonPhrase);
@@ -216,7 +221,7 @@ namespace OpenTelemetry.Trace
         /// </summary>
         /// <param name="span">Span to fill out.</param>
         /// <param name="flavor">HTTP version.</param>
-        /// <returns>Span with populated request size properties.</returns>
+        /// <returns>Span with populated properties.</returns>
         public static TelemetrySpan PutHttpFlavorAttribute(this TelemetrySpan span, string flavor)
         {
             span.SetAttribute(SpanAttributeConstants.HttpFlavorKey, flavor);
@@ -229,23 +234,23 @@ namespace OpenTelemetry.Trace
         /// </summary>
         /// <param name="span">Span to fill out.</param>
         /// <param name="type">Database type.</param>
-        /// <returns>Span with populated request size properties.</returns>
+        /// <returns>Span with populated properties.</returns>
         public static TelemetrySpan PutDatabaseTypeAttribute(this TelemetrySpan span, string type)
         {
-            span.SetAttribute(SpanAttributeConstants.DatabaseType, type);
+            span.SetAttribute(SpanAttributeConstants.DatabaseTypeKey, type);
             return span;
         }
 
         /// <summary>
-        /// Helper method that populates database type
+        /// Helper method that populates database instance
         /// to https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/data-database.md.
         /// </summary>
         /// <param name="span">Span to fill out.</param>
         /// <param name="instance">Database instance.</param>
-        /// <returns>Span with populated request size properties.</returns>
+        /// <returns>Span with populated properties.</returns>
         public static TelemetrySpan PutDatabaseInstanceAttribute(this TelemetrySpan span, string instance)
         {
-            span.SetAttribute(SpanAttributeConstants.DatabaseInstance, instance);
+            span.SetAttribute(SpanAttributeConstants.DatabaseInstanceKey, instance);
             return span;
         }
 
@@ -254,11 +259,11 @@ namespace OpenTelemetry.Trace
         /// to https://github.com/open-telemetry/opentelemetry-specification/blob/master/specification/data-database.md.
         /// </summary>
         /// <param name="span">Span to fill out.</param>
-        /// <param name="statement">Database type.</param>
-        /// <returns>Span with populated request size properties.</returns>
+        /// <param name="statement">Database statement.</param>
+        /// <returns>Span with populated properties.</returns>
         public static TelemetrySpan PutDatabaseStatementAttribute(this TelemetrySpan span, string statement)
         {
-            span.SetAttribute(SpanAttributeConstants.DatabaseStatement, statement);
+            span.SetAttribute(SpanAttributeConstants.DatabaseStatementKey, statement);
             return span;
         }
     }
