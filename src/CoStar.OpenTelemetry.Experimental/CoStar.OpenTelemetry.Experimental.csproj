@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0;netstandard2.1;net461</TargetFrameworks>
     <PackageId>CoStar.OpenTelemetry.Experimental</PackageId>
     <Product>CoStar.OpenTelemetry.Experimental</Product>
     <Description>CoStar experimental fork of OpenTelemetry.</Description>
@@ -9,6 +9,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OpenTelemetry.Api\OpenTelemetry.Api.csproj">
+      <PrivateAssets>All</PrivateAssets>
+    </ProjectReference>
+    <ProjectReference Include="..\OpenTelemetry.Collector.AspNet\OpenTelemetry.Collector.AspNet.Win.csproj" Condition="$(TargetFramework) == 'net461'">
       <PrivateAssets>All</PrivateAssets>
     </ProjectReference>
     <ProjectReference Include="..\OpenTelemetry.Collector.AspNetCore\OpenTelemetry.Collector.AspNetCore.csproj">
