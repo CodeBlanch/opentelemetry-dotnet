@@ -14,7 +14,7 @@
     <ProjectReference Include="..\OpenTelemetry.Collector.AspNet\OpenTelemetry.Collector.AspNet.Win.csproj" Condition="$(TargetFramework) == 'net461'">
       <PrivateAssets>All</PrivateAssets>
     </ProjectReference>
-    <ProjectReference Include="..\OpenTelemetry.Collector.AspNetCore\OpenTelemetry.Collector.AspNetCore.csproj">
+    <ProjectReference Include="..\OpenTelemetry.Collector.AspNetCore\OpenTelemetry.Collector.AspNetCore.csproj" Condition="$(TargetFramework) != 'net461'">
       <PrivateAssets>All</PrivateAssets>
     </ProjectReference>
     <ProjectReference Include="..\OpenTelemetry.Collector.Dependencies\OpenTelemetry.Collector.Dependencies.csproj">
@@ -50,7 +50,7 @@
     <ProjectReference Include="..\OpenTelemetry.Exporter.ZPages\OpenTelemetry.Exporter.ZPages.csproj">
       <PrivateAssets>All</PrivateAssets>
     </ProjectReference>
-    <ProjectReference Include="..\OpenTelemetry.Hosting\OpenTelemetry.Hosting.csproj">
+    <ProjectReference Include="..\OpenTelemetry.Hosting\OpenTelemetry.Hosting.csproj" Condition="$(TargetFramework) != 'net461'">
       <PrivateAssets>All</PrivateAssets>
     </ProjectReference>
     <ProjectReference Include="..\OpenTelemetry\OpenTelemetry.csproj">
