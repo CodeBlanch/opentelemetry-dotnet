@@ -2,7 +2,7 @@ name: Redis Integration Tests
 
 on:
   push:
-    branches: [ redis-integration ]
+    branches: [ master ]
   pull_request:
     branches: [ master ]
 
