@@ -41,5 +41,15 @@ namespace OpenTelemetry.Exporter.Jaeger.Implementation
                 this.OutputProtocol,
                 cancellationToken);
         }
+
+        internal Task WriteSpanAsync(Process process, BufferWriterMemory span, CancellationToken cancellationToken)
+        {
+            return EmitBatchArgs.WriteAsync(
+                this.SeqId,
+                process,
+                span,
+                this.OutputProtocol,
+                cancellationToken);
+        }
     }
 }

@@ -54,5 +54,38 @@ namespace OpenTelemetry.Exporter.Jaeger.Implementation
             await oprot.WriteMessageEndAsync(cancellationToken).ConfigureAwait(false);
             await oprot.Transport.FlushAsync(cancellationToken).ConfigureAwait(false);
         }
+
+        public static async Task WriteAsync(int seqId, Process process, BufferWriterMemory span, TProtocol oprot, CancellationToken cancellationToken)
+        {
+            await oprot.WriteMessageBeginAsync(new TMessage("emitBatch", TMessageType.Oneway, seqId), cancellationToken).ConfigureAwait(false);
+
+            oprot.IncrementRecursionDepth();
+            try
+            {
+                var struc = new TStruct("emitBatch_args");
+                await oprot.WriteStructBeginAsync(struc, cancellationToken).ConfigureAwait(false);
+
+                var field = new TField
+                {
+                    Name = "batch",
+                    Type = TType.Struct,
+                    ID = 1,
+                };
+
+                await oprot.WriteFieldBeginAsync(field, cancellationToken).ConfigureAwait(false);
+                await Batch.WriteAsync(process, span, oprot, cancellationToken).ConfigureAwait(false);
+                await oprot.WriteFieldEndAsync(cancellationToken).ConfigureAwait(false);
+
+                await oprot.WriteFieldStopAsync(cancellationToken).ConfigureAwait(false);
+                await oprot.WriteStructEndAsync(cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                oprot.DecrementRecursionDepth();
+            }
+
+            await oprot.WriteMessageEndAsync(cancellationToken).ConfigureAwait(false);
+            await oprot.Transport.FlushAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 }

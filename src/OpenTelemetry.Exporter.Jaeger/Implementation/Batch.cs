@@ -49,6 +49,49 @@ namespace OpenTelemetry.Exporter.Jaeger.Implementation
             return sb.ToString();
         }
 
+        internal static async Task WriteAsync(Process process, BufferWriterMemory span, TProtocol oprot, CancellationToken cancellationToken)
+        {
+            oprot.IncrementRecursionDepth();
+            try
+            {
+                var struc = new TStruct("Batch");
+
+                await oprot.WriteStructBeginAsync(struc, cancellationToken).ConfigureAwait(false);
+
+                var field = new TField
+                {
+                    Name = "process",
+                    Type = TType.Struct,
+                    ID = 1,
+                };
+
+                await oprot.WriteFieldBeginAsync(field, cancellationToken).ConfigureAwait(false);
+                await oprot.Transport.WriteAsync(process.Message, cancellationToken).ConfigureAwait(false);
+                await oprot.WriteFieldEndAsync(cancellationToken).ConfigureAwait(false);
+
+                field.Name = "spans";
+                field.Type = TType.List;
+                field.ID = 2;
+
+                await oprot.WriteFieldBeginAsync(field, cancellationToken).ConfigureAwait(false);
+                {
+                    await oprot.WriteListBeginAsync(new TList(TType.Struct, 1), cancellationToken).ConfigureAwait(false);
+
+                    await oprot.Transport.WriteAsync(span.BufferWriter.Buffer, span.Offset, span.Count, cancellationToken).ConfigureAwait(false);
+
+                    await oprot.WriteListEndAsync(cancellationToken).ConfigureAwait(false);
+                }
+
+                await oprot.WriteFieldEndAsync(cancellationToken).ConfigureAwait(false);
+                await oprot.WriteFieldStopAsync(cancellationToken).ConfigureAwait(false);
+                await oprot.WriteStructEndAsync(cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                oprot.DecrementRecursionDepth();
+            }
+        }
+
         internal async Task WriteAsync(TProtocol oprot, CancellationToken cancellationToken)
         {
             oprot.IncrementRecursionDepth();

@@ -78,12 +78,20 @@ namespace OpenTelemetry.Exporter.Jaeger
                         this.ApplyLibraryResource(libraryResource ?? Resource.Empty);
 
                         this.libraryResourceApplied = true;
+
+                        this.Process.Message = this.BuildThriftMessage(this.Process).ToArray();
+                        this.processCache = new Dictionary<string, Process>
+                        {
+                            [this.Process.ServiceName] = this.Process,
+                        };
                     }
 
-                    this.AppendSpan(activity.ToJaegerSpan());
+                    this.ExportSpan(activity.ToJaegerSpan());
+
+                    // this.AppendSpan(activity.ToJaegerSpan());
                 }
 
-                this.SendCurrentBatches();
+                // this.SendCurrentBatches(null);
 
                 return ExportResult.Success;
             }
@@ -150,15 +158,6 @@ namespace OpenTelemetry.Exporter.Jaeger
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void AppendSpan(JaegerSpan jaegerSpan)
         {
-            if (this.processCache == null)
-            {
-                this.Process.Message = this.BuildThriftMessage(this.Process).ToArray();
-                this.processCache = new Dictionary<string, Process>
-                {
-                    [this.Process.ServiceName] = this.Process,
-                };
-            }
-
             var spanServiceName = jaegerSpan.PeerServiceName ?? this.Process.ServiceName;
 
             if (!this.processCache.TryGetValue(spanServiceName, out var spanProcess))
@@ -194,6 +193,33 @@ namespace OpenTelemetry.Exporter.Jaeger
 
             spanBatch.Add(spanMessage);
             this.batchByteSize += spanTotalBytesNeeded;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void ExportSpan(JaegerSpan jaegerSpan)
+        {
+            var spanServiceName = jaegerSpan.PeerServiceName ?? this.Process.ServiceName;
+
+            if (!this.processCache.TryGetValue(spanServiceName, out var spanProcess))
+            {
+                spanProcess = new Process(spanServiceName, this.Process.Tags);
+                spanProcess.Message = this.BuildThriftMessage(spanProcess).ToArray();
+                this.processCache.Add(spanServiceName, spanProcess);
+            }
+
+            var spanMessage = this.BuildThriftMessage(jaegerSpan);
+
+            jaegerSpan.Return();
+
+            var task = this.thriftClient.WriteSpanAsync(spanProcess, spanMessage, CancellationToken.None);
+
+#if DEBUG
+            if (task.Status != TaskStatus.RanToCompletion)
+            {
+                throw new InvalidOperationException();
+            }
+#endif
+            this.memoryTransport.Reset();
         }
 
         /// <inheritdoc/>
