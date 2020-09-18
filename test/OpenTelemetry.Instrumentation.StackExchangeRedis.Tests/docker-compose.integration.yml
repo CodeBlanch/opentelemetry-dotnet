@@ -13,6 +13,9 @@ services:
     build:
       context: .
       dockerfile: ./test/OpenTelemetry.Instrumentation.StackExchangeRedis.Tests/dockerfile
+      args:
+        PUBLISH_FRAMEWORK: netcoreapp2.1
+        SDK_TAG: 2.1
     command: --filter CategoryName=RedisIntegrationTests
     environment:
       - OTEL_REDISENDPOINT=redis:6379
