@@ -39,12 +39,19 @@ namespace OpenTelemetry.Instrumentation
         }
 
         /// <summary>
-        /// Fetch the property from the object.
+        /// Try to fetch the property from the object.
         /// </summary>
         /// <param name="obj">Object to be fetched.</param>
-        /// <returns>Property fetched.</returns>
-        public T Fetch(object obj)
+        /// <param name="value">Fetched value.</param>
+        /// <returns><see langword="true"/> if the property was fetched.</returns>
+        public bool TryFetch(object obj, out T value)
         {
+            if (obj == null)
+            {
+                value = default;
+                return false;
+            }
+
             if (this.innerFetcher == null)
             {
                 var type = obj.GetType().GetTypeInfo();
@@ -57,7 +64,7 @@ namespace OpenTelemetry.Instrumentation
                 this.innerFetcher = PropertyFetch.FetcherForProperty(property);
             }
 
-            return this.innerFetcher.Fetch(obj);
+            return this.innerFetcher.TryFetch(obj, out value);
         }
 
         // see https://github.com/dotnet/corefx/blob/master/src/System.Diagnostics.DiagnosticSource/src/System/Diagnostics/DiagnosticSourceEventSource.cs
@@ -81,9 +88,10 @@ namespace OpenTelemetry.Instrumentation
                 return (PropertyFetch)Activator.CreateInstance(instantiatedTypedPropertyFetcher, propertyInfo);
             }
 
-            public virtual T Fetch(object obj)
+            public virtual bool TryFetch(object obj, out T value)
             {
-                return default;
+                value = default;
+                return false;
             }
 
             private class TypedPropertyFetch<TDeclaredObject, TDeclaredProperty> : PropertyFetch
@@ -96,14 +104,18 @@ namespace OpenTelemetry.Instrumentation
                     this.propertyFetch = (Func<TDeclaredObject, TDeclaredProperty>)property.GetMethod.CreateDelegate(typeof(Func<TDeclaredObject, TDeclaredProperty>));
                 }
 
-                public override T Fetch(object obj)
+                private delegate bool TryFetchDelegate(TDeclaredObject obj, out TDeclaredProperty value);
+
+                public override bool TryFetch(object obj, out T value)
                 {
                     if (obj is TDeclaredObject o)
                     {
-                        return this.propertyFetch(o);
+                        value = this.propertyFetch(o);
+                        return true;
                     }
 
-                    return default;
+                    value = default;
+                    return false;
                 }
             }
         }

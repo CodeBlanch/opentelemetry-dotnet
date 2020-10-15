@@ -27,9 +27,10 @@ namespace OpenTelemetry.Tests.Instrumentation
         {
             var activity = new Activity("test");
             var fetch = new PropertyFetcher<string>("DisplayName");
-            var result = fetch.Fetch(activity);
+            var result = fetch.TryFetch(activity, out var value);
 
-            Assert.Equal(activity.DisplayName, result);
+            Assert.True(result);
+            Assert.Equal(activity.DisplayName, value);
         }
 
         [Fact]
@@ -37,13 +38,15 @@ namespace OpenTelemetry.Tests.Instrumentation
         {
             var activity = new Activity("test");
             var fetch = new PropertyFetcher<string>("DisplayName2");
-            var result = fetch.Fetch(activity);
+            var result = fetch.TryFetch(activity, out var value);
 
             var fetchInt = new PropertyFetcher<int>("DisplayName2");
-            var resultInt = fetchInt.Fetch(activity);
+            var resultInt = fetchInt.TryFetch(activity, out var valueInt);
 
-            Assert.Equal(default, result);
-            Assert.Equal(default, resultInt);
+            Assert.False(result);
+            Assert.Equal(default, value);
+            Assert.False(resultInt);
+            Assert.Equal(default, valueInt);
         }
     }
 }
