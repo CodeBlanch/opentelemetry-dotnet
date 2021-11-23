@@ -20,11 +20,103 @@ using System.Threading;
 
 namespace OpenTelemetry.Metrics
 {
+    public class ReadOnlyHistogramMeasurementCollection
+    {
+        private readonly double[] explicitBounds;
+        private readonly long[] bucketCounts;
+        private readonly long[] snapshotBucketCounts;
+
+        internal ReadOnlyHistogramMeasurementCollection(double[] explicitBounds)
+        {
+            this.explicitBounds = explicitBounds;
+            this.bucketCounts = new long[explicitBounds.Length + 1];
+            this.snapshotBucketCounts = new long[explicitBounds.Length + 1];
+        }
+
+        internal object LockObject { get; } = new();
+
+        public int Count => this.bucketCounts.Length;
+
+        internal int GetBucketIndexForValue(double value)
+        {
+            int i = 0;
+
+            for (; i < this.explicitBounds.Length; i++)
+            {
+                // Upper bound is inclusive
+                if (value <= this.explicitBounds[i])
+                {
+                    break;
+                }
+            }
+
+            return i;
+        }
+
+        internal void IncrementBucket(int bucketIndex)
+        {
+            this.bucketCounts[bucketIndex]++;
+        }
+
+        internal void Snapshot(bool outputDelta)
+        {
+            for (int i = 0; i < this.bucketCounts.Length; i++)
+            {
+                this.snapshotBucketCounts[i] = this.bucketCounts[i];
+                if (outputDelta)
+                {
+                    this.bucketCounts[i] = 0;
+                }
+            }
+        }
+
+        public struct Enumerator
+        {
+            private readonly ReadOnlyHistogramMeasurementCollection histogramMeasurements;
+            private int index;
+
+            internal Enumerator(ReadOnlyHistogramMeasurementCollection histogramMeasurements)
+            {
+                this.histogramMeasurements = histogramMeasurements;
+                this.index = 0;
+                this.Current = default;
+            }
+
+            public ReadOnlyHistogramMeasurement Current { get; private set; }
+
+            public bool MoveNext()
+            {
+                if (this.index < this.histogramMeasurements.Count)
+                {
+                    double? explicitBounds = this.index < this.histogramMeasurements.explicitBounds.Length
+                        ? this.histogramMeasurements.explicitBounds[this.index]
+                        : null;
+                    long count = this.histogramMeasurements.snapshotBucketCounts[this.index];
+                    this.Current = new ReadOnlyHistogramMeasurement(explicitBounds, count);
+                    this.index++;
+                }
+
+                return false;
+            }
+        }
+    }
+
+    public readonly struct ReadOnlyHistogramMeasurement
+    {
+        internal ReadOnlyHistogramMeasurement(double? explicitBound, long count)
+        {
+            this.ExplicitBound = explicitBound;
+            this.Count = count;
+        }
+
+        public double? ExplicitBound { get; }
+
+        public long Count { get; }
+    }
+
     public struct MetricPoint
     {
         private readonly AggregationType aggType;
-        private readonly object lockObject;
-        private readonly long[] bucketCounts;
         private long longVal;
         private long lastLongSum;
         private double doubleVal;
@@ -53,24 +145,15 @@ namespace OpenTelemetry.Metrics
 
             if (this.aggType == AggregationType.Histogram)
             {
-                this.ExplicitBounds = histogramBounds;
-                this.BucketCounts = new long[this.ExplicitBounds.Length + 1];
-                this.bucketCounts = new long[this.ExplicitBounds.Length + 1];
-                this.lockObject = new object();
+                this.HistogramMeasurements = new ReadOnlyHistogramMeasurementCollection(histogramBounds);
             }
             else if (this.aggType == AggregationType.HistogramSumCount)
             {
-                this.ExplicitBounds = null;
-                this.BucketCounts = null;
-                this.bucketCounts = null;
-                this.lockObject = new object();
+                this.HistogramMeasurements = new ReadOnlyHistogramMeasurementCollection(histogramBounds);
             }
             else
             {
-                this.ExplicitBounds = null;
-                this.BucketCounts = null;
-                this.bucketCounts = null;
-                this.lockObject = null;
+                this.HistogramMeasurements = null;
             }
         }
 
@@ -87,9 +170,7 @@ namespace OpenTelemetry.Metrics
 
         public double DoubleValue { get; internal set; }
 
-        public long[] BucketCounts { get; internal set; }
-
-        public double[] ExplicitBounds { get; internal set; }
+        public ReadOnlyHistogramMeasurementCollection HistogramMeasurements { get; }
 
         internal MetricPointStatus MetricPointStatus { get; private set; }
 
@@ -167,21 +248,13 @@ namespace OpenTelemetry.Metrics
 
                 case AggregationType.Histogram:
                     {
-                        int i;
-                        for (i = 0; i < this.ExplicitBounds.Length; i++)
-                        {
-                            // Upper bound is inclusive
-                            if (number <= this.ExplicitBounds[i])
-                            {
-                                break;
-                            }
-                        }
+                        int i = this.HistogramMeasurements.GetBucketIndexForValue(number);
 
-                        lock (this.lockObject)
+                        lock (this.HistogramMeasurements.LockObject)
                         {
                             this.longVal++;
                             this.doubleVal += number;
-                            this.bucketCounts[i]++;
+                            this.HistogramMeasurements.IncrementBucket(i);
                         }
 
                         break;
@@ -189,7 +262,7 @@ namespace OpenTelemetry.Metrics
 
                 case AggregationType.HistogramSumCount:
                     {
-                        lock (this.lockObject)
+                        lock (this.HistogramMeasurements.LockObject)
                         {
                             this.longVal++;
                             this.doubleVal += number;
@@ -314,7 +387,7 @@ namespace OpenTelemetry.Metrics
 
                 case AggregationType.Histogram:
                     {
-                        lock (this.lockObject)
+                        lock (this.HistogramMeasurements.LockObject)
                         {
                             this.LongValue = this.longVal;
                             this.DoubleValue = this.doubleVal;
@@ -324,14 +397,7 @@ namespace OpenTelemetry.Metrics
                                 this.doubleVal = 0;
                             }
 
-                            for (int i = 0; i < this.bucketCounts.Length; i++)
-                            {
-                                this.BucketCounts[i] = this.bucketCounts[i];
-                                if (outputDelta)
-                                {
-                                    this.bucketCounts[i] = 0;
-                                }
-                            }
+                            this.HistogramMeasurements.Snapshot(outputDelta);
 
                             this.MetricPointStatus = MetricPointStatus.NoCollectPending;
                         }
@@ -341,7 +407,7 @@ namespace OpenTelemetry.Metrics
 
                 case AggregationType.HistogramSumCount:
                     {
-                        lock (this.lockObject)
+                        lock (this.HistogramMeasurements.LockObject)
                         {
                             this.LongValue = this.longVal;
                             this.DoubleValue = this.doubleVal;
