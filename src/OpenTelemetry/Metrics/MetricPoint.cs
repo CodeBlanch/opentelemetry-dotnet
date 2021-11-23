@@ -37,6 +37,8 @@ namespace OpenTelemetry.Metrics
 
         public int Count => this.bucketCounts.Length;
 
+        public Enumerator GetEnumerator() => new(this);
+
         internal int GetBucketIndexForValue(double value)
         {
             int i = 0;
