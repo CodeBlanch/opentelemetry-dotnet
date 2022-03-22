@@ -541,11 +541,11 @@ namespace OpenTelemetry.Metrics
             }
         }
 
-        internal MetricPoint Copy()
+        internal static MetricPoint Copy(in MetricPoint metricPoint)
         {
-            MetricPoint copy = this;
+            MetricPoint copy = metricPoint;
 
-            copy.histogramBuckets = this.histogramBuckets.Copy();
+            copy.histogramBuckets = metricPoint.GetHistogramBuckets().Copy();
 
             return copy;
         }

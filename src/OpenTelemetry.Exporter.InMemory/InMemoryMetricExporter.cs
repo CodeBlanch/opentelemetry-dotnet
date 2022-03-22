@@ -41,7 +41,7 @@ namespace OpenTelemetry.Exporter
 
                 foreach (ref readonly var metricPoint in metric.GetMetricPoints())
                 {
-                    metricPoints.Add(metricPoint.Copy());
+                    metricPoints.Add(MetricPoint.Copy(in metricPoint));
                 }
 
                 this.exportedItems.Add(new ExportedMetric(metric, metricPoints));
