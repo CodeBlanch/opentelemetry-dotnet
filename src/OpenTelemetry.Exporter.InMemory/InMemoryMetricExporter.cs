@@ -50,7 +50,7 @@ namespace OpenTelemetry.Exporter
             return ExportResult.Success;
         }
 
-        public readonly struct ExportedMetric
+        public class ExportedMetric
         {
             private readonly InstrumentIdentity instrumentIdentity;
 
