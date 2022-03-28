@@ -8,10 +8,10 @@
     <MinVerTagPrefix>core-</MinVerTagPrefix>
   </PropertyGroup>
 
-  <!--Do not run ApiCompat for net461 & net5.0 as this is newly added. There is
-  no existing contract for net461 or net5.0 against which we could compare the
-  implementation. Remove this property once we have released a stable net461 &
-  net5.0 version.-->
+  <!--Do not run ApiCompat for net462 & net6.0 as this is newly added. There is
+  no existing contract for net462 or net6.0 against which we could compare the
+  implementation. Remove this property once we have released a stable net462 &
+  net6.0 version.-->
   <PropertyGroup Condition="'$(TargetFramework)' == 'net462' or '$(TargetFramework)' == 'net6.0'">
     <RunApiCompat>false</RunApiCompat>
   </PropertyGroup>
