@@ -1,12 +1,12 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <!-- OmniSharp/VS Code requires TargetFrameworks to be in descending order for IntelliSense and analysis. -->
-    <TargetFrameworks>net5.0;netstandard2.0;net461;</TargetFrameworks>
+    <TargetFrameworks>net6.0;netstandard2.0;net462;</TargetFrameworks>
     <Description>Zipkin exporter for OpenTelemetry .NET</Description>
     <PackageTags>$(PackageTags);Zipkin;distributed-tracing</PackageTags>
     <MinVerTagPrefix>core-</MinVerTagPrefix>
     <!-- TODO: Remove this once a version targeting net5.0 is released -->
-    <RunApiCompat Condition="$(TargetFramework) == 'net5.0'">false</RunApiCompat>
+    <RunApiCompat Condition="$(TargetFramework) == 'net6.0'">false</RunApiCompat>
   </PropertyGroup>
 
   <ItemGroup>
