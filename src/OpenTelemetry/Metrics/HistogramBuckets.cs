@@ -15,6 +15,8 @@
 // </copyright>
 
 using System;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace OpenTelemetry.Metrics
 {
@@ -36,9 +38,34 @@ namespace OpenTelemetry.Metrics
 
         internal int IsCriticalSectionOccupied = 0;
 
+        private readonly Bucket root;
+
         internal HistogramBuckets(double[] explicitBounds)
         {
             this.ExplicitBounds = explicitBounds;
+            if (explicitBounds != null)
+            {
+                this.root = ConstructBalancedTree(explicitBounds, 0, explicitBounds.Length);
+
+                static Bucket ConstructBalancedTree(double[] values, int min, int max)
+                {
+                    if (min == max)
+                    {
+                        return null;
+                    }
+
+                    int median = min + ((max - min) / 2);
+                    return new Bucket
+                    {
+                        Index = median,
+                        UpperBoundInclusive = values[median],
+                        LowerBoundExclusive = median > 0 ? values[median - 1] : double.MinValue,
+                        Left = ConstructBalancedTree(values, min, median),
+                        Right = ConstructBalancedTree(values, median + 1, max),
+                    };
+                }
+            }
+
             this.RunningBucketCounts = explicitBounds != null ? new long[explicitBounds.Length + 1] : null;
             this.SnapshotBucketCounts = explicitBounds != null ? new long[explicitBounds.Length + 1] : new long[0];
         }
@@ -55,6 +82,32 @@ namespace OpenTelemetry.Metrics
             copy.SnapshotSum = this.SnapshotSum;
 
             return copy;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal int FindBucketIndex(double searchValue)
+        {
+            Bucket current = this.root;
+
+            Debug.Assert(current != null, "Bucket root was null.");
+
+            while (current != null)
+            {
+                if (searchValue <= current.LowerBoundExclusive)
+                {
+                    current = current.Left;
+                }
+                else if (searchValue > current.UpperBoundInclusive)
+                {
+                    current = current.Right;
+                }
+                else
+                {
+                    return current.Index;
+                }
+            }
+
+            return this.ExplicitBounds.Length;
         }
 
         /// <summary>
@@ -103,6 +156,19 @@ namespace OpenTelemetry.Metrics
 
                 return false;
             }
+        }
+
+        private class Bucket
+        {
+            public double UpperBoundInclusive { get; set; }
+
+            public double LowerBoundExclusive { get; set; }
+
+            public int Index { get; set; }
+
+            public Bucket Left { get; set; }
+
+            public Bucket Right { get; set; }
         }
     }
 }
