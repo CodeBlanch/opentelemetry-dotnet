@@ -129,6 +129,14 @@ namespace OpenTelemetry.Logs
                 {
                     this.AddProcessor(processor);
                 }
+
+                // Step 4: Look for any configure actions registered directly with the service provider.
+
+                var configureRegistrations = serviceProvider.GetServices<OpenTelemetryLoggingServiceCollectionExtensions.LoggerProviderConfigureRegistration>();
+                foreach (var configureRegistration in configureRegistrations)
+                {
+                    configureRegistration.Configure(serviceProvider, this);
+                }
             }
 
             this.Resource = this.ResourceBuilder.Build();
