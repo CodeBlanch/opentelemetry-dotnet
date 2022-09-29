@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using OpenTelemetry.Context.Propagation;
 using OpenTelemetry.Internal;
 using OpenTelemetry.Resources;
 
@@ -148,22 +149,26 @@ namespace OpenTelemetry.Trace
                         return;
                     }
 
-                    if (!activity.IsAllDataRequested)
+                    if (activity.IsAllDataRequested)
                     {
-                        return;
+                        // Spec says IsRecording must be false once span ends.
+                        // https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/api.md#isrecording
+                        // However, Activity has slightly different semantic
+                        // than Span and we don't have strong reason to do this
+                        // now, as Activity anyway allows read/write always.
+                        // Intentionally commenting the following line.
+                        // activity.IsAllDataRequested = false;
+
+                        if (SuppressInstrumentationScope.DecrementIfTriggered() == 0)
+                        {
+                            this.processor?.OnEnd(activity);
+                        }
                     }
 
-                    // Spec says IsRecording must be false once span ends.
-                    // https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/api.md#isrecording
-                    // However, Activity has slightly different semantic
-                    // than Span and we don't have strong reason to do this
-                    // now, as Activity anyway allows read/write always.
-                    // Intentionally commenting the following line.
-                    // activity.IsAllDataRequested = false;
-
-                    if (SuppressInstrumentationScope.DecrementIfTriggered() == 0)
+                    if (activity.Parent == null)
                     {
-                        this.processor?.OnEnd(activity);
+                        // Clear baggage when root span is complete.
+                        ClearBaggage();
                     }
                 };
             }
@@ -183,22 +188,26 @@ namespace OpenTelemetry.Trace
                 {
                     OpenTelemetrySdkEventSource.Log.ActivityStopped(activity);
 
-                    if (!activity.IsAllDataRequested)
+                    if (activity.IsAllDataRequested)
                     {
-                        return;
+                        // Spec says IsRecording must be false once span ends.
+                        // https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/api.md#isrecording
+                        // However, Activity has slightly different semantic
+                        // than Span and we don't have strong reason to do this
+                        // now, as Activity anyway allows read/write always.
+                        // Intentionally commenting the following line.
+                        // activity.IsAllDataRequested = false;
+
+                        if (SuppressInstrumentationScope.DecrementIfTriggered() == 0)
+                        {
+                            this.processor?.OnEnd(activity);
+                        }
                     }
 
-                    // Spec says IsRecording must be false once span ends.
-                    // https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/api.md#isrecording
-                    // However, Activity has slightly different semantic
-                    // than Span and we don't have strong reason to do this
-                    // now, as Activity anyway allows read/write always.
-                    // Intentionally commenting the following line.
-                    // activity.IsAllDataRequested = false;
-
-                    if (SuppressInstrumentationScope.DecrementIfTriggered() == 0)
+                    if (activity.Parent == null)
                     {
-                        this.processor?.OnEnd(activity);
+                        // Clear baggage when root span is complete.
+                        ClearBaggage();
                     }
                 };
             }
@@ -440,6 +449,15 @@ namespace OpenTelemetry.Trace
             return (isRootSpan || parentContext.IsRemote)
                 ? ActivitySamplingResult.PropagationData
                 : ActivitySamplingResult.None;
+        }
+
+        private static void ClearBaggage()
+        {
+            var textMapPropagator = Propagators.DefaultTextMapPropagator;
+            if (textMapPropagator is not TraceContextPropagator)
+            {
+                Baggage.Current = default;
+            }
         }
 
         private void RunGetRequestedDataAlwaysOnSampler(Activity activity)
