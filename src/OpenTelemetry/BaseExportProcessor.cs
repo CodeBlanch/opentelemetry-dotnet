@@ -17,6 +17,7 @@
 #nullable enable
 
 using System;
+using System.Threading;
 using OpenTelemetry.Internal;
 
 namespace OpenTelemetry
@@ -42,6 +43,22 @@ namespace OpenTelemetry
     }
 
     /// <summary>
+    /// Contains the defined export processor filter decisions.
+    /// </summary>
+    public enum ExportFilterDecision
+    {
+        /// <summary>
+        /// Item will be exported.
+        /// </summary>
+        Export,
+
+        /// <summary>
+        /// Item will ignored.
+        /// </summary>
+        Ignore,
+    }
+
+    /// <summary>
     /// Implements processor that exports telemetry objects.
     /// </summary>
     /// <typeparam name="T">The type of telemetry object to be exported.</typeparam>
@@ -49,6 +66,7 @@ namespace OpenTelemetry
         where T : class
     {
         protected readonly BaseExporter<T> exporter;
+        private long filteredCount;
         private bool disposed;
 
         /// <summary>
@@ -62,7 +80,24 @@ namespace OpenTelemetry
             this.exporter = exporter;
         }
 
+        /// <summary>
+        /// Gets or sets a filter function that is run OnEnd to determine if a
+        /// <typeparamref name="T"/> instance should be exported or not.
+        /// </summary>
+        /// <remarks>
+        /// Note: An instance of <typeparamref name="T"/> will be exported if
+        /// any of the following conditions are <see langword="true"/>...
+        /// <list type="bullet"><item><see cref="ExportFilter"/> is <see
+        /// langword="null"/>.</item>
+        /// <item><see cref="ExportFilter"/> returns <see
+        /// cref="ExportFilterDecision.Export"/>.</item>
+        /// <item><see cref="ExportFilter"/> throws an exception.</item></list>
+        /// </remarks>
+        public Func<T, ExportFilterDecision>? ExportFilter { get; set; }
+
         internal BaseExporter<T> Exporter => this.exporter;
+
+        internal long FilteredCount => this.filteredCount;
 
         /// <inheritdoc />
         public sealed override void OnStart(T data)
@@ -71,6 +106,24 @@ namespace OpenTelemetry
 
         public override void OnEnd(T data)
         {
+            var filter = this.ExportFilter;
+            if (filter != null)
+            {
+                try
+                {
+                    var result = filter(data);
+                    if (result == ExportFilterDecision.Ignore)
+                    {
+                        Interlocked.Increment(ref this.filteredCount);
+                        return;
+                    }
+                }
+                catch
+                {
+                    // TODO: Log
+                }
+            }
+
             this.OnExport(data);
         }
 

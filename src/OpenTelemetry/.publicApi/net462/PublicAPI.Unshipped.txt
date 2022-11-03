@@ -1,5 +1,10 @@
 Microsoft.Extensions.DependencyInjection.MeterProviderBuilderServiceCollectionExtensions
 Microsoft.Extensions.DependencyInjection.TracerProviderBuilderServiceCollectionExtensions
+OpenTelemetry.BaseExportProcessor<T>.ExportFilter.get -> System.Func<T!, OpenTelemetry.ExportFilterDecision>?
+OpenTelemetry.BaseExportProcessor<T>.ExportFilter.set -> void
+OpenTelemetry.ExportFilterDecision
+OpenTelemetry.ExportFilterDecision.Export = 0 -> OpenTelemetry.ExportFilterDecision
+OpenTelemetry.ExportFilterDecision.Ignore = 1 -> OpenTelemetry.ExportFilterDecision
 OpenTelemetry.Logs.LogRecord.CategoryName.set -> void
 OpenTelemetry.Logs.LogRecord.EventId.set -> void
 OpenTelemetry.Logs.LogRecord.Exception.set -> void
@@ -17,12 +22,15 @@ OpenTelemetry.Metrics.HistogramConfiguration.RecordMinMax.set -> void
 OpenTelemetry.Metrics.MetricPoint.TryGetHistogramMinMaxValues(out double min, out double max) -> bool
 OpenTelemetry.Resources.ResourceBuilder.AddDetector(System.Func<System.IServiceProvider?, OpenTelemetry.Resources.IResourceDetector!>! resourceDetectorFactory) -> OpenTelemetry.Resources.ResourceBuilder!
 OpenTelemetry.Trace.BatchExportActivityProcessorOptions.BatchExportActivityProcessorOptions(Microsoft.Extensions.Configuration.IConfiguration! configuration) -> void
+OpenTelemetry.Trace.ExportActivityProcessorOptions.ExportFilter.get -> System.Func<System.Diagnostics.Activity!, OpenTelemetry.ExportFilterDecision>?
+OpenTelemetry.Trace.ExportActivityProcessorOptions.ExportFilter.set -> void
 static Microsoft.Extensions.DependencyInjection.MeterProviderBuilderServiceCollectionExtensions.ConfigureOpenTelemetryMetrics(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Microsoft.Extensions.DependencyInjection.MeterProviderBuilderServiceCollectionExtensions.ConfigureOpenTelemetryMetrics(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<OpenTelemetry.Metrics.MeterProviderBuilder!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static OpenTelemetry.Metrics.MeterProviderBuilderExtensions.AddInstrumentation<T>(this OpenTelemetry.Metrics.MeterProviderBuilder! meterProviderBuilder) -> OpenTelemetry.Metrics.MeterProviderBuilder!
 static OpenTelemetry.Metrics.MeterProviderBuilderExtensions.AddReader<T>(this OpenTelemetry.Metrics.MeterProviderBuilder! meterProviderBuilder) -> OpenTelemetry.Metrics.MeterProviderBuilder!
 static OpenTelemetry.Metrics.MeterProviderBuilderExtensions.ConfigureBuilder(this OpenTelemetry.Metrics.MeterProviderBuilder! meterProviderBuilder, System.Action<System.IServiceProvider!, OpenTelemetry.Metrics.MeterProviderBuilder!>! configure) -> OpenTelemetry.Metrics.MeterProviderBuilder!
 static OpenTelemetry.Metrics.MeterProviderBuilderExtensions.ConfigureServices(this OpenTelemetry.Metrics.MeterProviderBuilder! meterProviderBuilder, System.Action<Microsoft.Extensions.DependencyInjection.IServiceCollection!>! configure) -> OpenTelemetry.Metrics.MeterProviderBuilder!
+static OpenTelemetry.Trace.ExportActivityProcessorOptions.CreateExportProcessor(OpenTelemetry.Trace.ExportActivityProcessorOptions! options, OpenTelemetry.BaseExporter<System.Diagnostics.Activity!>! exporter) -> OpenTelemetry.BaseExportProcessor<System.Diagnostics.Activity!>!
 static OpenTelemetry.Trace.TracerProviderBuilderExtensions.AddExporter(this OpenTelemetry.Trace.TracerProviderBuilder! tracerProviderBuilder, OpenTelemetry.ExportProcessorType exportProcessorType, OpenTelemetry.BaseExporter<System.Diagnostics.Activity!>! exporter, string? name, System.Action<OpenTelemetry.Trace.ExportActivityProcessorOptions!>? configure) -> OpenTelemetry.Trace.TracerProviderBuilder!
 static OpenTelemetry.Trace.TracerProviderBuilderExtensions.AddExporter<T>(this OpenTelemetry.Trace.TracerProviderBuilder! tracerProviderBuilder, OpenTelemetry.ExportProcessorType exportProcessorType, string? name, System.Action<OpenTelemetry.Trace.ExportActivityProcessorOptions!>? configure) -> OpenTelemetry.Trace.TracerProviderBuilder!
 OpenTelemetry.Trace.SamplingResult.TraceStateString.get -> string?

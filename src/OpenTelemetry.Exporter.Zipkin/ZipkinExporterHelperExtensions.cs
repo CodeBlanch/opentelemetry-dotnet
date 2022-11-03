@@ -114,19 +114,8 @@ namespace OpenTelemetry.Trace
 
             var zipkinExporter = new ZipkinExporter(options);
 
-            if (options.ExportProcessorType == ExportProcessorType.Simple)
-            {
-                return builder.AddProcessor(new SimpleActivityExportProcessor(zipkinExporter));
-            }
-            else
-            {
-                return builder.AddProcessor(new BatchActivityExportProcessor(
-                    zipkinExporter,
-                    options.BatchExportProcessorOptions.MaxQueueSize,
-                    options.BatchExportProcessorOptions.ScheduledDelayMilliseconds,
-                    options.BatchExportProcessorOptions.ExporterTimeoutMilliseconds,
-                    options.BatchExportProcessorOptions.MaxExportBatchSize));
-            }
+            return builder.AddProcessor(
+                ExportActivityProcessorOptions.CreateExportProcessor(options, zipkinExporter));
         }
     }
 }

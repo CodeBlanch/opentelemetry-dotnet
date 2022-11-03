@@ -284,30 +284,17 @@ namespace OpenTelemetry.Trace
             string? name,
             Action<ExportActivityProcessorOptions>? configure)
         {
-            name ??= Options.DefaultName;
+            var options = serviceProvider.GetRequiredService<IOptionsMonitor<ExportActivityProcessorOptions>>().Get(name ?? Options.DefaultName);
 
-            switch (exportProcessorType)
+            options.ExportProcessorType = exportProcessorType;
+
+            if (configure != null)
             {
-                case ExportProcessorType.Simple:
-                    return new SimpleActivityExportProcessor(exporter);
-                case ExportProcessorType.Batch:
-                    var options = serviceProvider.GetRequiredService<IOptionsMonitor<ExportActivityProcessorOptions>>().Get(name);
-
-                    options.ExportProcessorType = ExportProcessorType.Batch;
-
-                    configure?.Invoke(options);
-
-                    var batchOptions = options.BatchExportProcessorOptions;
-
-                    return new BatchActivityExportProcessor(
-                        exporter,
-                        batchOptions.MaxQueueSize,
-                        batchOptions.ScheduledDelayMilliseconds,
-                        batchOptions.ExporterTimeoutMilliseconds,
-                        batchOptions.MaxExportBatchSize);
-                default:
-                    throw new NotSupportedException($"ExportProcessorType '{exportProcessorType}' is not supported.");
+                configure(options);
+                options.ExportProcessorType = exportProcessorType;
             }
+
+            return ExportActivityProcessorOptions.CreateExportProcessor(options, exporter);
         }
 
         private TracerProviderBuilder AddInstrumentation<T>(Func<IServiceProvider, T> instrumentationFactory)

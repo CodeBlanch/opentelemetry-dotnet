@@ -2,3 +2,7 @@
 static OpenTelemetry.Trace.ZipkinExporterHelperExtensions.AddZipkinExporter(this OpenTelemetry.Trace.TracerProviderBuilder builder) -> OpenTelemetry.Trace.TracerProviderBuilder
 static OpenTelemetry.Trace.ZipkinExporterHelperExtensions.AddZipkinExporter(this OpenTelemetry.Trace.TracerProviderBuilder builder, string name, System.Action<OpenTelemetry.Exporter.ZipkinExporterOptions> configure) -> OpenTelemetry.Trace.TracerProviderBuilder
 static OpenTelemetry.Trace.ZipkinExporterHelperExtensions.AddZipkinExporter(this OpenTelemetry.Trace.TracerProviderBuilder builder, System.Action<OpenTelemetry.Exporter.ZipkinExporterOptions> configure) -> OpenTelemetry.Trace.TracerProviderBuilder
+*REMOVED*OpenTelemetry.Exporter.ZipkinExporterOptions.BatchExportProcessorOptions.get -> OpenTelemetry.BatchExportProcessorOptions<System.Diagnostics.Activity>
+*REMOVED*OpenTelemetry.Exporter.ZipkinExporterOptions.BatchExportProcessorOptions.set -> void
+*REMOVED*OpenTelemetry.Exporter.ZipkinExporterOptions.ExportProcessorType.get -> OpenTelemetry.ExportProcessorType
+*REMOVED*OpenTelemetry.Exporter.ZipkinExporterOptions.ExportProcessorType.set -> void

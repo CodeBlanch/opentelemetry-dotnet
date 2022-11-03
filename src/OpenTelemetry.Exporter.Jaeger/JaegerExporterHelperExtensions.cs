@@ -115,19 +115,8 @@ namespace OpenTelemetry.Trace
 
             var jaegerExporter = new JaegerExporter(options);
 
-            if (options.ExportProcessorType == ExportProcessorType.Simple)
-            {
-                return builder.AddProcessor(new SimpleActivityExportProcessor(jaegerExporter));
-            }
-            else
-            {
-                return builder.AddProcessor(new BatchActivityExportProcessor(
-                    jaegerExporter,
-                    options.BatchExportProcessorOptions.MaxQueueSize,
-                    options.BatchExportProcessorOptions.ScheduledDelayMilliseconds,
-                    options.BatchExportProcessorOptions.ExporterTimeoutMilliseconds,
-                    options.BatchExportProcessorOptions.MaxExportBatchSize));
-            }
+            return builder.AddProcessor(
+                ExportActivityProcessorOptions.CreateExportProcessor(options, jaegerExporter));
         }
     }
 }

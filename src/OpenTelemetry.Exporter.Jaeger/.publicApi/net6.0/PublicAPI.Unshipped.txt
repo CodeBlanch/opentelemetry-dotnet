@@ -2,3 +2,7 @@
 static OpenTelemetry.Trace.JaegerExporterHelperExtensions.AddJaegerExporter(this OpenTelemetry.Trace.TracerProviderBuilder builder) -> OpenTelemetry.Trace.TracerProviderBuilder
 static OpenTelemetry.Trace.JaegerExporterHelperExtensions.AddJaegerExporter(this OpenTelemetry.Trace.TracerProviderBuilder builder, string name, System.Action<OpenTelemetry.Exporter.JaegerExporterOptions> configure) -> OpenTelemetry.Trace.TracerProviderBuilder
 static OpenTelemetry.Trace.JaegerExporterHelperExtensions.AddJaegerExporter(this OpenTelemetry.Trace.TracerProviderBuilder builder, System.Action<OpenTelemetry.Exporter.JaegerExporterOptions> configure) -> OpenTelemetry.Trace.TracerProviderBuilder
+*REMOVED*OpenTelemetry.Exporter.JaegerExporterOptions.BatchExportProcessorOptions.get -> OpenTelemetry.BatchExportProcessorOptions<System.Diagnostics.Activity>
+*REMOVED*OpenTelemetry.Exporter.JaegerExporterOptions.BatchExportProcessorOptions.set -> void
+*REMOVED*OpenTelemetry.Exporter.JaegerExporterOptions.ExportProcessorType.get -> OpenTelemetry.ExportProcessorType
+*REMOVED*OpenTelemetry.Exporter.JaegerExporterOptions.ExportProcessorType.set -> void

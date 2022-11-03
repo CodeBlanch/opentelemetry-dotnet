@@ -15,7 +15,6 @@
 // </copyright>
 
 using System;
-using System.Diagnostics;
 using System.Net.Http;
 using Microsoft.Extensions.Configuration;
 using OpenTelemetry.Internal;
@@ -32,7 +31,7 @@ namespace OpenTelemetry.Exporter
     /// The constructor throws <see cref="FormatException"/> if it fails to parse
     /// any of the supported environment variables.
     /// </remarks>
-    public class JaegerExporterOptions
+    public class JaegerExporterOptions : ExportActivityProcessorOptions
     {
         internal const int DefaultMaxPayloadSizeInBytes = 4096;
 
@@ -107,16 +106,6 @@ namespace OpenTelemetry.Exporter
         /// Gets or sets the maximum payload size in bytes. Default value: 4096.
         /// </summary>
         public int? MaxPayloadSizeInBytes { get; set; } = DefaultMaxPayloadSizeInBytes;
-
-        /// <summary>
-        /// Gets or sets the export processor type to be used with Jaeger Exporter. The default value is <see cref="ExportProcessorType.Batch"/>.
-        /// </summary>
-        public ExportProcessorType ExportProcessorType { get; set; } = ExportProcessorType.Batch;
-
-        /// <summary>
-        /// Gets or sets the BatchExportProcessor options. Ignored unless ExportProcessorType is BatchExporter.
-        /// </summary>
-        public BatchExportProcessorOptions<Activity> BatchExportProcessorOptions { get; set; }
 
         /// <summary>
         /// Gets or sets the factory function called to create the <see

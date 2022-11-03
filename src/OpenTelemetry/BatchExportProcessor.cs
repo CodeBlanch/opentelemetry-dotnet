@@ -90,7 +90,7 @@ namespace OpenTelemetry
         /// <summary>
         /// Gets the number of telemetry objects received by the processor.
         /// </summary>
-        internal long ReceivedCount => this.circularBuffer.AddedCount + this.DroppedCount;
+        internal long ReceivedCount => this.circularBuffer.AddedCount + this.DroppedCount + this.FilteredCount;
 
         /// <summary>
         /// Gets the number of telemetry objects processed by the underlying exporter.

@@ -249,9 +249,7 @@ namespace OpenTelemetry.Trace
         /// <param name="exportProcessorType"><see cref="ExportProcessorType"/>.</param>
         /// <param name="name">Name which is used when retrieving options.</param>
         /// <param name="configure">Callback action to configure <see
-        /// cref="ExportActivityProcessorOptions"/>. Only invoked when <paramref
-        /// name="exportProcessorType"/> is <see
-        /// cref="ExportProcessorType.Batch"/>.</param>
+        /// cref="ExportActivityProcessorOptions"/>.</param>
         /// <returns>The supplied <see cref="TracerProviderBuilder"/> for chaining.</returns>
         public static TracerProviderBuilder AddExporter<T>(
             this TracerProviderBuilder tracerProviderBuilder,

@@ -16,6 +16,8 @@
 
 #nullable enable
 
+using System;
+using System.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using OpenTelemetry.Internal;
 
@@ -47,6 +49,21 @@ public class ExportActivityProcessorOptions
     public ExportProcessorType ExportProcessorType { get; set; }
 
     /// <summary>
+    /// Gets or sets a filter function that is run OnEnd to determine if a <see
+    /// cref="Activity"/> instance should be exported or not.
+    /// </summary>
+    /// <remarks>
+    /// Note: An instance of <see cref="Activity"/> will be exported if any of
+    /// the following conditions are <see langword="true"/>...
+    /// <list type="bullet"><item><see cref="ExportFilter"/> is <see
+    /// langword="null"/>.</item>
+    /// <item><see cref="ExportFilter"/> returns <see
+    /// cref="ExportFilterDecision.Export"/>.</item>
+    /// <item><see cref="ExportFilter"/> throws an exception.</item></list>
+    /// </remarks>
+    public Func<Activity, ExportFilterDecision>? ExportFilter { get; set; }
+
+    /// <summary>
     /// Gets or sets the batch export options. Ignored unless <see cref="ExportProcessorType"/> is <see cref="ExportProcessorType.Batch"/>.
     /// </summary>
     public BatchExportActivityProcessorOptions BatchExportProcessorOptions
@@ -57,6 +74,44 @@ public class ExportActivityProcessorOptions
             Guard.ThrowIfNull(value);
 
             this.batchExportProcessorOptions = value;
+        }
+    }
+
+    /// <summary>
+    /// Creates a <see cref="BaseExportProcessor{T}"/> instance from options.
+    /// </summary>
+    /// <param name="options"><see cref="ExportActivityProcessorOptions"/>.</param>
+    /// <param name="exporter"><see cref="BaseExporter{T}"/>.</param>
+    /// <returns><see cref="BaseExportProcessor{T}"/>.</returns>
+    public static BaseExportProcessor<Activity> CreateExportProcessor(ExportActivityProcessorOptions options, BaseExporter<Activity> exporter)
+    {
+        Guard.ThrowIfNull(options);
+        Guard.ThrowIfNull(exporter);
+
+        BaseExportProcessor<Activity> exportProcessor = CreateExportProcessorInner();
+
+        exportProcessor.ExportFilter = options.ExportFilter;
+
+        return exportProcessor;
+
+        BaseExportProcessor<Activity> CreateExportProcessorInner()
+        {
+            switch (options.ExportProcessorType)
+            {
+                case ExportProcessorType.Simple:
+                    return new SimpleActivityExportProcessor(exporter);
+                case ExportProcessorType.Batch:
+                    var batchOptions = options.BatchExportProcessorOptions;
+
+                    return new BatchActivityExportProcessor(
+                        exporter,
+                        batchOptions.MaxQueueSize,
+                        batchOptions.ScheduledDelayMilliseconds,
+                        batchOptions.ExporterTimeoutMilliseconds,
+                        batchOptions.MaxExportBatchSize);
+                default:
+                    throw new NotSupportedException($"ExportProcessorType '{options.ExportProcessorType}' is not supported.");
+            }
         }
     }
 }
