@@ -238,9 +238,17 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "redaction", "docs\logs\reda
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OpenTelemetry.Exporter.OpenTelemetryProtocol.Grpc", "src\OpenTelemetry.Exporter.OpenTelemetryProtocol.Grpc\OpenTelemetry.Exporter.OpenTelemetryProtocol.Grpc.csproj", "{7263001A-49F8-4C3C-AAA8-998F12DAAF64}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenTelemetry.Exporter.Console.Tests", "test\OpenTelemetry.Exporter.Console.Tests\OpenTelemetry.Exporter.Console.Tests.csproj", "{011E70E1-152A-47BB-AF83-12DD12B125ED}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OpenTelemetry.Exporter.Console.Tests", "test\OpenTelemetry.Exporter.Console.Tests\OpenTelemetry.Exporter.Console.Tests.csproj", "{011E70E1-152A-47BB-AF83-12DD12B125ED}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OpenTelemetry.DependencyInjection", "src\OpenTelemetry.DependencyInjection\OpenTelemetry.DependencyInjection.csproj", "{171A87CB-393C-4296-913F-E704CD8CEAE9}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Instrumentation sandbox", "Instrumentation sandbox", "{6B594652-53B3-4427-8B5E-C5AD928BEB20}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyLibrary", "InstrumentationSandbox\MyLibrary\MyLibrary.csproj", "{C844F461-71E3-41CC-8B8A-FE079E46A328}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyLibrary.OpenTelemetry", "InstrumentationSandbox\MyLibrary.OpenTelemetry\MyLibrary.OpenTelemetry.csproj", "{CBD8B633-F495-4063-820B-D456B5DF79CE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExampleApp", "InstrumentationSandbox\ExampleApp\ExampleApp.csproj", "{7A6170C6-4BD0-4146-B93E-4777E3865A2E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -504,6 +512,18 @@ Global
 		{171A87CB-393C-4296-913F-E704CD8CEAE9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{171A87CB-393C-4296-913F-E704CD8CEAE9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{171A87CB-393C-4296-913F-E704CD8CEAE9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C844F461-71E3-41CC-8B8A-FE079E46A328}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C844F461-71E3-41CC-8B8A-FE079E46A328}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C844F461-71E3-41CC-8B8A-FE079E46A328}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C844F461-71E3-41CC-8B8A-FE079E46A328}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CBD8B633-F495-4063-820B-D456B5DF79CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CBD8B633-F495-4063-820B-D456B5DF79CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CBD8B633-F495-4063-820B-D456B5DF79CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CBD8B633-F495-4063-820B-D456B5DF79CE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7A6170C6-4BD0-4146-B93E-4777E3865A2E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7A6170C6-4BD0-4146-B93E-4777E3865A2E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7A6170C6-4BD0-4146-B93E-4777E3865A2E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7A6170C6-4BD0-4146-B93E-4777E3865A2E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -541,6 +561,9 @@ Global
 		{9A07D215-90AC-4BAF-BCDB-73D74FD3A5C5} = {3862190B-E2C5-418E-AFDC-DB281FB5C705}
 		{5FDAF679-DE5A-4C73-A49B-8ABCF2399229} = {77C7929A-2EED-4AA6-8705-B5C443C8AA0F}
 		{A2DF46DE-50D7-4887-8C9D-4BD79CA19FAA} = {3862190B-E2C5-418E-AFDC-DB281FB5C705}
+		{C844F461-71E3-41CC-8B8A-FE079E46A328} = {6B594652-53B3-4427-8B5E-C5AD928BEB20}
+		{CBD8B633-F495-4063-820B-D456B5DF79CE} = {6B594652-53B3-4427-8B5E-C5AD928BEB20}
+		{7A6170C6-4BD0-4146-B93E-4777E3865A2E} = {6B594652-53B3-4427-8B5E-C5AD928BEB20}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {55639B5C-0770-4A22-AB56-859604650521}
