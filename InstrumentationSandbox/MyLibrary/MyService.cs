@@ -28,8 +28,11 @@ internal sealed class MyService : IMyService
 
         using var activity = filterTelemetry ? null : s_ActivitySource.StartActivity("ReadMessage", ActivityKind.Client);
 
-        // Simulate some work.
-        await Task.Delay(2000).ConfigureAwait(false);
+        using (this.myServiceTelemetry.SuppressDownstreamInstrumentation())
+        {
+            // Simulate some work.
+            await Task.Delay(2000).ConfigureAwait(false);
+        }
 
         Message response = new();
 
@@ -63,8 +66,13 @@ internal sealed class MyService : IMyService
             this.myServiceTelemetry.EnrichWriteMessageTrace(message, activity);
         }
 
-        // Simulate some work.
-        await Task.Delay(2000).ConfigureAwait(false);
+        this.myServiceTelemetry.InjectMessage(message);
+
+        using (this.myServiceTelemetry.SuppressDownstreamInstrumentation())
+        {
+            // Simulate some work.
+            await Task.Delay(2000).ConfigureAwait(false);
+        }
 
         if (!filterTelemetry)
         {

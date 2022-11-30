@@ -1,14 +1,51 @@
 using System.Diagnostics;
+using OpenTelemetry;
+using OpenTelemetry.Context.Propagation;
 
 namespace MyLibrary.Telemetry;
 
 internal sealed class OpenTelemetryMyServiceTelemetry : IMyServiceTelemetry
 {
+    private static readonly Action<Message, string, string> s_Setter = (message, name, value) =>
+    {
+        message.Headers[name] = value;
+    };
+
+    private static readonly Func<Message, string, IEnumerable<string>> s_Getter = (message, name) =>
+    {
+        if (message.Headers.TryGetValue(name, out string? value))
+        {
+            return new string[] { value };
+        }
+
+        return Array.Empty<string>();
+    };
+
     private readonly MyLibraryTelemetryOptions options;
 
     public OpenTelemetryMyServiceTelemetry(MyLibraryTelemetryOptions options)
     {
         this.options = options;
+    }
+
+    public void InjectMessage(Message message)
+    {
+        var activity = Activity.Current;
+        if (activity != null && activity.IdFormat == ActivityIdFormat.W3C)
+        {
+            Propagators.DefaultTextMapPropagator.Inject(
+                new PropagationContext(activity.Context, Baggage.Current),
+                message,
+                s_Setter);
+        }
+    }
+
+    public void ExtractMessage(Message message, out ActivityContext activityContext)
+    {
+        var context = Propagators.DefaultTextMapPropagator.Extract(default, message, s_Getter);
+
+        activityContext = context.ActivityContext;
+        Baggage.Current = context.Baggage;
     }
 
     public void EnrichReadMessageTrace(string? messagePrefix, Activity activity, Message message)
@@ -84,5 +121,10 @@ internal sealed class OpenTelemetryMyServiceTelemetry : IMyServiceTelemetry
     public bool FilterWriteMessageRequest(Message message)
     {
         return this.options.FilterWriteMessageRequest?.Invoke(message) ?? false;
+    }
+
+    public IDisposable? SuppressDownstreamInstrumentation()
+    {
+        return SuppressInstrumentationScope.Begin();
     }
 }

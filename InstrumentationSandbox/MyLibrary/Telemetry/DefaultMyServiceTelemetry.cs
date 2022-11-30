@@ -4,6 +4,15 @@ namespace MyLibrary.Telemetry;
 
 internal sealed class DefaultMyServiceTelemetry : IMyServiceTelemetry
 {
+    public void InjectMessage(Message message)
+    {
+    }
+
+    public void ExtractMessage(Message message, out ActivityContext activityContext)
+    {
+        activityContext = default;
+    }
+
     public void EnrichReadMessageTrace(string? messagePrefix, Activity activity, Message message)
     {
         if (!string.IsNullOrEmpty(messagePrefix))
@@ -43,5 +52,10 @@ internal sealed class DefaultMyServiceTelemetry : IMyServiceTelemetry
     public bool FilterWriteMessageRequest(Message message)
     {
         return false;
+    }
+
+    public IDisposable? SuppressDownstreamInstrumentation()
+    {
+        return null;
     }
 }
