@@ -4,7 +4,9 @@ namespace MyLibrary.Telemetry;
 
 internal interface IMyServiceTelemetry
 {
-    void InjectMessage(Message message);
+    void InjectTelemetryContextIntoMessage(Message message);
+
+    void ExtractTelemetryContextFromMessage(Message message, out ActivityContext activityContext);
 
     bool FilterReadMessageRequest(string? messagePrefix);
 
@@ -12,13 +14,11 @@ internal interface IMyServiceTelemetry
 
     void EnrichReadMessagMetric(string? messagePrefix, Message message, out TagList tags);
 
-    void ExtractMessage(Message message, out ActivityContext activityContext);
-
     bool FilterWriteMessageRequest(Message message);
 
     void EnrichWriteMessageTrace(Message message, Activity activity);
 
     void EnrichWriteMessagMetric(Message message, out TagList tags);
 
-    IDisposable? SuppressDownstreamInstrumentation();
+    IDisposable? SuppressInstrumentation();
 }

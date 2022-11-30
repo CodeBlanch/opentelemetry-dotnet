@@ -28,7 +28,7 @@ internal sealed class OpenTelemetryMyServiceTelemetry : IMyServiceTelemetry
         this.options = options;
     }
 
-    public void InjectMessage(Message message)
+    public void InjectTelemetryContextIntoMessage(Message message)
     {
         var activity = Activity.Current;
         if (activity != null && activity.IdFormat == ActivityIdFormat.W3C)
@@ -40,7 +40,7 @@ internal sealed class OpenTelemetryMyServiceTelemetry : IMyServiceTelemetry
         }
     }
 
-    public void ExtractMessage(Message message, out ActivityContext activityContext)
+    public void ExtractTelemetryContextFromMessage(Message message, out ActivityContext activityContext)
     {
         var context = Propagators.DefaultTextMapPropagator.Extract(default, message, s_Getter);
 
@@ -123,7 +123,7 @@ internal sealed class OpenTelemetryMyServiceTelemetry : IMyServiceTelemetry
         return this.options.FilterWriteMessageRequest?.Invoke(message) ?? false;
     }
 
-    public IDisposable? SuppressDownstreamInstrumentation()
+    public IDisposable? SuppressInstrumentation()
     {
         return SuppressInstrumentationScope.Begin();
     }

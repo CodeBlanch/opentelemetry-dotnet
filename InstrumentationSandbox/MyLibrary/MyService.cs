@@ -28,7 +28,7 @@ internal sealed class MyService : IMyService
 
         using var activity = filterTelemetry ? null : s_ActivitySource.StartActivity("ReadMessage", ActivityKind.Client);
 
-        using (this.myServiceTelemetry.SuppressDownstreamInstrumentation())
+        using (this.myServiceTelemetry.SuppressInstrumentation())
         {
             // Simulate some work.
             await Task.Delay(2000).ConfigureAwait(false);
@@ -66,9 +66,9 @@ internal sealed class MyService : IMyService
             this.myServiceTelemetry.EnrichWriteMessageTrace(message, activity);
         }
 
-        this.myServiceTelemetry.InjectMessage(message);
+        this.myServiceTelemetry.InjectTelemetryContextIntoMessage(message);
 
-        using (this.myServiceTelemetry.SuppressDownstreamInstrumentation())
+        using (this.myServiceTelemetry.SuppressInstrumentation())
         {
             // Simulate some work.
             await Task.Delay(2000).ConfigureAwait(false);

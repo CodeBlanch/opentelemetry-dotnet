@@ -4,11 +4,11 @@ namespace MyLibrary.Telemetry;
 
 internal sealed class DefaultMyServiceTelemetry : IMyServiceTelemetry
 {
-    public void InjectMessage(Message message)
+    public void InjectTelemetryContextIntoMessage(Message message)
     {
     }
 
-    public void ExtractMessage(Message message, out ActivityContext activityContext)
+    public void ExtractTelemetryContextFromMessage(Message message, out ActivityContext activityContext)
     {
         activityContext = default;
     }
@@ -54,7 +54,7 @@ internal sealed class DefaultMyServiceTelemetry : IMyServiceTelemetry
         return false;
     }
 
-    public IDisposable? SuppressDownstreamInstrumentation()
+    public IDisposable? SuppressInstrumentation()
     {
         return null;
     }
