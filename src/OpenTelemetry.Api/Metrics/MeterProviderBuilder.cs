@@ -14,6 +14,8 @@
 // limitations under the License.
 // </copyright>
 
+using System.Diagnostics.Metrics;
+
 namespace OpenTelemetry.Metrics
 {
     /// <summary>
@@ -39,10 +41,28 @@ namespace OpenTelemetry.Metrics
             where TInstrumentation : class;
 
         /// <summary>
-        /// Adds given Meter names to the list of subscribed meters.
+        /// Adds given meter names to the list of subscribed meters.
         /// </summary>
         /// <param name="names">Meter names.</param>
         /// <returns>Returns <see cref="MeterProviderBuilder"/> for chaining.</returns>
         public abstract MeterProviderBuilder AddMeter(params string[] names);
+
+        /// <summary>
+        /// Adds a function for subscribing to <see cref="Meter"/> instances.
+        /// </summary>
+        /// <remarks>
+        /// Note: Return <see langword="true"/> from <paramref
+        /// name="shouldListenToFunc"/> to add a <see cref="Meter"/> to the
+        /// list of subscribed meters. Return <see langword="false"/> to ignore
+        /// the <see cref="Meter"/>.
+        /// </remarks>
+        /// <param name="shouldListenToFunc">Function for determining a the
+        /// provider should listen to a <see cref="Meter"/>.</param>
+        /// <returns>Returns <see cref="MeterProviderBuilder"/> for
+        /// chaining.</returns>
+        public virtual MeterProviderBuilder AddMeter(Func<Meter, bool> shouldListenToFunc)
+        {
+            throw new NotSupportedException($"Type '{this.GetType()}' does not support listening to meters by function.");
+        }
     }
 }

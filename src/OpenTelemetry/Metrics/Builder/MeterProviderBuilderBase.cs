@@ -16,6 +16,7 @@
 
 #nullable enable
 
+using System.Diagnostics.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenTelemetry.Internal;
@@ -86,6 +87,19 @@ public class MeterProviderBuilderBase : MeterProviderBuilder, IMeterProviderBuil
         this.ConfigureBuilderInternal((sp, builder) =>
         {
             builder.AddMeter(names);
+        });
+
+        return this;
+    }
+
+    /// <inheritdoc />
+    public override MeterProviderBuilder AddMeter(Func<Meter, bool> shouldListenToFunc)
+    {
+        Guard.ThrowIfNull(shouldListenToFunc);
+
+        this.ConfigureBuilderInternal((sp, builder) =>
+        {
+            builder.AddMeter(shouldListenToFunc);
         });
 
         return this;

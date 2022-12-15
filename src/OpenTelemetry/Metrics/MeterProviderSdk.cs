@@ -149,6 +149,33 @@ namespace OpenTelemetry.Metrics
 
             OpenTelemetrySdkEventSource.Log.MeterProviderSdkEvent($"Listening to following meters = \"{string.Join(";", state.MeterSources)}\".");
 
+            if (state.MeterShouldListenToFunctions.Any())
+            {
+                var shouldListenToUserFunctionsCopy = state.MeterShouldListenToFunctions.ToArray();
+                shouldListenTo = instrument =>
+                {
+                    // First look for a name match.
+                    var shouldListenToMeter = shouldListenTo(instrument);
+
+                    if (!shouldListenToMeter)
+                    {
+                        // If no match by name, run user selection functions.
+                        foreach (var shouldListenToUserFunc in shouldListenToUserFunctionsCopy)
+                        {
+                            if (shouldListenToUserFunc(instrument.Meter))
+                            {
+                                shouldListenToMeter = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    return shouldListenToMeter;
+                };
+
+                OpenTelemetrySdkEventSource.Log.MeterProviderSdkEvent($"Registered {shouldListenToUserFunctionsCopy.Length} meter listening functions.");
+            }
+
             this.listener = new MeterListener();
             var viewConfigCount = this.viewConfigs.Count;
 

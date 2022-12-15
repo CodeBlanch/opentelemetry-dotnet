@@ -55,6 +55,8 @@ namespace OpenTelemetry.Metrics
 
         public List<string> MeterSources { get; } = new();
 
+        public List<Func<Meter, bool>> MeterShouldListenToFunctions { get; } = new();
+
         public List<Func<Instrument, MetricStreamConfiguration?>> ViewConfigs { get; } = new();
 
         public int MaxMetricStreams { get; private set; } = MaxMetricsDefault;
@@ -165,6 +167,15 @@ namespace OpenTelemetry.Metrics
 
                 this.MeterSources.Add(name);
             }
+
+            return this;
+        }
+
+        public override MeterProviderBuilder AddMeter(Func<Meter, bool> shouldListenToFunc)
+        {
+            Debug.Assert(shouldListenToFunc != null, "shouldListenToFunc was null");
+
+            this.MeterShouldListenToFunctions.Add(shouldListenToFunc!);
 
             return this;
         }
