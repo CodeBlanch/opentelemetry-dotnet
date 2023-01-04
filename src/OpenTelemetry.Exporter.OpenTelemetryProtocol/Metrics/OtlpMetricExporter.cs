@@ -39,7 +39,7 @@ namespace OpenTelemetry.Exporter
         /// <param name="options">Configuration options for the exporter.</param>
         [Obsolete("Use the ctor accepting OtlpMetricExporterOptions instead this method will be removed in a future version.")]
         public OtlpMetricExporter(OtlpExporterOptions options)
-            : this(new(options), null)
+            : this(options?.GetMetricsExportClient() ?? throw new ArgumentNullException(nameof(options)))
         {
         }
 
@@ -48,27 +48,19 @@ namespace OpenTelemetry.Exporter
         /// </summary>
         /// <param name="options">Configuration options for the exporter.</param>
         public OtlpMetricExporter(OtlpMetricExporterOptions options)
-            : this(options, null)
+            : this(options?.GetMetricsExportClient() ?? throw new ArgumentNullException(nameof(options)))
         {
         }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="OtlpMetricExporter"/> class.
         /// </summary>
-        /// <param name="options">Configuration options for the export.</param>
         /// <param name="exportClient">Client used for sending export request.</param>
-        internal OtlpMetricExporter(OtlpMetricExporterOptions options, IExportClient<OtlpCollector.ExportMetricsServiceRequest> exportClient = null)
+        internal OtlpMetricExporter(IExportClient<OtlpCollector.ExportMetricsServiceRequest> exportClient)
         {
-            Debug.Assert(options != null, "options was null");
+            Debug.Assert(exportClient != null, "exportClient was null");
 
-            if (exportClient != null)
-            {
-                this.exportClient = exportClient;
-            }
-            else
-            {
-                this.exportClient = options.GetMetricsExportClient();
-            }
+            this.exportClient = exportClient;
         }
 
         internal OtlpResource.Resource ProcessResource => this.processResource ??= this.ParentProvider.GetResource().ToOtlpResource();

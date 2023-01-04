@@ -164,7 +164,7 @@ namespace OpenTelemetry.Trace
         {
             exporterOptions.TryEnableIHttpClientFactoryIntegration(serviceProvider, "OtlpTraceExporter");
 
-            BaseExporter<Activity> otlpExporter = new OtlpTraceExporter(exporterOptions, sdkLimitOptions);
+            BaseExporter<Activity> otlpExporter = new OtlpTraceExporter(sdkLimitOptions, exporterOptions.GetTraceExportClient());
 
             if (configureExporterInstance != null)
             {

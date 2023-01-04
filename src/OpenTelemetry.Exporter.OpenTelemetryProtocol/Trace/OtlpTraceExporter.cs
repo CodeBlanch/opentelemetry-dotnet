@@ -40,7 +40,7 @@ namespace OpenTelemetry.Exporter
         /// <param name="options">Configuration options for the export.</param>
         [Obsolete("Use the ctor accepting OtlpTraceExporterOptions instead this method will be removed in a future version.")]
         public OtlpTraceExporter(OtlpExporterOptions options)
-            : this(new(options), new(), null)
+            : this(sdkLimitOptions: new(), exportClient: options?.GetTraceExportClient() ?? throw new ArgumentNullException(nameof(options)))
         {
         }
 
@@ -49,34 +49,24 @@ namespace OpenTelemetry.Exporter
         /// </summary>
         /// <param name="options">Configuration options for the exporter.</param>
         public OtlpTraceExporter(OtlpTraceExporterOptions options)
-            : this(options, new(), null)
+            : this(sdkLimitOptions: new(), exportClient: options?.GetTraceExportClient() ?? throw new ArgumentNullException(nameof(options)))
         {
         }
 
         /// <summary>
         /// Initializes a new instance of the <see cref="OtlpTraceExporter"/> class.
         /// </summary>
-        /// <param name="exporterOptions"><see cref="OtlpExporterOptions"/>.</param>
         /// <param name="sdkLimitOptions"><see cref="SdkLimitOptions"/>.</param>
         /// <param name="exportClient">Client used for sending export request.</param>
         internal OtlpTraceExporter(
-            OtlpTraceExporterOptions exporterOptions,
             SdkLimitOptions sdkLimitOptions,
-            IExportClient<OtlpCollector.ExportTraceServiceRequest> exportClient = null)
+            IExportClient<OtlpCollector.ExportTraceServiceRequest> exportClient)
         {
-            Debug.Assert(exporterOptions != null, "exporterOptions was null");
             Debug.Assert(sdkLimitOptions != null, "sdkLimitOptions was null");
+            Debug.Assert(exportClient != null, "exportClient was null");
 
             this.sdkLimitOptions = sdkLimitOptions;
-
-            if (exportClient != null)
-            {
-                this.exportClient = exportClient;
-            }
-            else
-            {
-                this.exportClient = exporterOptions.GetTraceExportClient();
-            }
+            this.exportClient = exportClient;
         }
 
         internal OtlpResource.Resource ProcessResource => this.processResource ??= this.ParentProvider.GetResource().ToOtlpResource();

@@ -17,7 +17,6 @@
 #nullable enable
 
 using OpenTelemetry.Exporter;
-using OpenTelemetry.Exporter.OpenTelemetryProtocol.Implementation;
 
 namespace OpenTelemetry.Logs;
 
@@ -26,14 +25,8 @@ namespace OpenTelemetry.Logs;
 // OtlpLogExporter and remove this class.
 internal sealed class OtlpLogExporterWithOptions : OtlpLogExporter
 {
-    [Obsolete]
-    public OtlpLogExporterWithOptions(OtlpExporterOptions options, SdkLimitOptions sdkLimitOptions)
-        : base(sdkLimitOptions, new OtlpLogExporterOptions(options).GetLogExportClient())
-    {
-    }
-
-    public OtlpLogExporterWithOptions(OtlpLogExporterOptions options, SdkLimitOptions sdkLimitOptions)
-        : base(sdkLimitOptions, options?.GetLogExportClient() ?? throw new ArgumentNullException(nameof(options)))
+    public OtlpLogExporterWithOptions(OtlpLogExporterOptions options)
+        : base(sdkLimitOptions: new(), exportClient: options?.GetLogExportClient() ?? throw new ArgumentNullException(nameof(options)))
     {
     }
 }

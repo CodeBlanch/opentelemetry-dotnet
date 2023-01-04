@@ -98,7 +98,7 @@ namespace OpenTelemetry.Logs
             OpenTelemetryLoggerOptions loggerOptions,
             OtlpLogExporterOptions exporterOptions)
         {
-            var otlpExporter = new OtlpLogExporterWithOptions(exporterOptions, new());
+            var otlpExporter = new OtlpLogExporterWithOptions(exporterOptions);
 
             loggerOptions.ParseStateValues = true;
 
