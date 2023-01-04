@@ -1,4 +1,4 @@
-// <copyright file="OtlpExporterOptions.cs" company="OpenTelemetry Authors">
+// <copyright file="OtlpLogExporterOptions.cs" company="OpenTelemetry Authors">
 // Copyright The OpenTelemetry Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,39 +16,55 @@
 
 #nullable enable
 
-using System.Diagnostics;
 using Microsoft.Extensions.Configuration;
-using OpenTelemetry.Trace;
+using OpenTelemetry.Exporter;
 
-namespace OpenTelemetry.Exporter;
+namespace OpenTelemetry.Logs;
 
 /// <summary>
-/// OpenTelemetry Protocol (OTLP) exporter options.
-/// OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_HEADERS, OTEL_EXPORTER_OTLP_TIMEOUT, OTEL_EXPORTER_OTLP_PROTOCOL
-/// environment variables are parsed during object construction.
+/// OpenTelemetry Protocol (OTLP) log exporter options.
+/// OTEL_EXPORTER_OTLP_LOGS_ENDPOINT, OTEL_EXPORTER_OTLP_LOGS_HEADERS,
+/// OTEL_EXPORTER_OTLP_LOGS_TIMEOUT, OTEL_EXPORTER_OTLP_LOGS_PROTOCOL
+/// environment variables are parsed during object construction in addition to
+/// the keys defined by <see cref="OtlpExporterBaseOptions"/>.
 /// </summary>
 /// <remarks>
 /// The constructor throws <see cref="FormatException"/> if it fails to parse
 /// any of the supported environment variables.
 /// </remarks>
-[Obsolete("Use a signal specific options classes instead. This class will be removed in a future version.")]
-public class OtlpExporterOptions : OtlpExporterBaseOptions
+public class OtlpLogExporterOptions : OtlpExporterBaseOptions
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="OtlpExporterOptions"/> class.
+    /// Initializes a new instance of the <see cref="OtlpLogExporterOptions"/> class.
     /// </summary>
-    public OtlpExporterOptions()
+    public OtlpLogExporterOptions()
         : this(new ConfigurationBuilder().AddEnvironmentVariables().Build(), new())
     {
     }
 
-    internal OtlpExporterOptions(
+    internal OtlpLogExporterOptions(
         IConfiguration configuration,
-        BatchExportActivityProcessorOptions? defaultBatchOptions = null)
+        BatchExportLogRecordProcessorOptions defaultBatchOptions)
         : base(configuration)
     {
         this.BatchExportProcessorOptions = defaultBatchOptions;
     }
+
+    [Obsolete]
+    internal OtlpLogExporterOptions(OtlpExporterOptions options)
+        : base(options)
+    {
+        this.ExportProcessorType = options.ExportProcessorType;
+        this.BatchExportProcessorOptions = new BatchExportLogRecordProcessorOptions();
+    }
+
+    internal override string? SignalEndpointEnvVarName => "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT";
+
+    internal override string? SignalHeadersEnvVarName => "OTEL_EXPORTER_OTLP_LOGS_HEADERS";
+
+    internal override string? SignalTimeoutEnvVarName => "OTEL_EXPORTER_OTLP_LOGS_TIMEOUT";
+
+    internal override string? SignalProtocolEnvVarName => "OTEL_EXPORTER_OTLP_LOGS_PROTOCOL";
 
     /// <summary>
     /// Gets or sets the export processor type to be used with the OpenTelemetry Protocol Exporter. The default value is <see cref="ExportProcessorType.Batch"/>.
@@ -58,13 +74,5 @@ public class OtlpExporterOptions : OtlpExporterBaseOptions
     /// <summary>
     /// Gets or sets the BatchExportProcessor options. Ignored unless ExportProcessorType is Batch.
     /// </summary>
-    public BatchExportProcessorOptions<Activity>? BatchExportProcessorOptions { get; set; }
-
-    internal override string? SignalEndpointEnvVarName => null;
-
-    internal override string? SignalHeadersEnvVarName => null;
-
-    internal override string? SignalTimeoutEnvVarName => null;
-
-    internal override string? SignalProtocolEnvVarName => null;
+    public BatchExportProcessorOptions<LogRecord> BatchExportProcessorOptions { get; set; }
 }

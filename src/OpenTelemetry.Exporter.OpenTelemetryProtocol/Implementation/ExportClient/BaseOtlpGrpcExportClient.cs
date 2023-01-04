@@ -26,7 +26,7 @@ namespace OpenTelemetry.Exporter.OpenTelemetryProtocol.Implementation.ExportClie
     /// <typeparam name="TRequest">Type of export request.</typeparam>
     internal abstract class BaseOtlpGrpcExportClient<TRequest> : IExportClient<TRequest>
     {
-        protected BaseOtlpGrpcExportClient(OtlpExporterOptions options)
+        protected BaseOtlpGrpcExportClient(OtlpExporterBaseOptions options)
         {
             Guard.ThrowIfNull(options);
             Guard.ThrowIfInvalidTimeout(options.TimeoutMilliseconds);

@@ -31,7 +31,7 @@ namespace OpenTelemetry.Exporter.OpenTelemetryProtocol.Implementation.ExportClie
         internal const string MediaContentType = "application/x-protobuf";
         private const string LogsExportPath = "v1/logs";
 
-        public OtlpHttpLogExportClient(OtlpExporterOptions options, HttpClient httpClient)
+        public OtlpHttpLogExportClient(OtlpExporterBaseOptions options, HttpClient httpClient)
             : base(options, httpClient, LogsExportPath)
         {
         }

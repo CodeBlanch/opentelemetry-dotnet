@@ -24,7 +24,7 @@ namespace OpenTelemetry.Exporter.OpenTelemetryProtocol.Implementation.ExportClie
     {
         private readonly OtlpCollector.MetricsService.MetricsServiceClient metricsClient;
 
-        public OtlpGrpcMetricsExportClient(OtlpExporterOptions options, OtlpCollector.MetricsService.MetricsServiceClient metricsServiceClient = null)
+        public OtlpGrpcMetricsExportClient(OtlpExporterBaseOptions options, OtlpCollector.MetricsService.MetricsServiceClient metricsServiceClient = null)
             : base(options)
         {
             if (metricsServiceClient != null)

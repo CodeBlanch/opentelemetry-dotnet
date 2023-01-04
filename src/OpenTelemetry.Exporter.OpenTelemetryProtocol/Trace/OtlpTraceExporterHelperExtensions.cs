@@ -14,7 +14,10 @@
 // limitations under the License.
 // </copyright>
 
+#nullable enable
+
 using System.Diagnostics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using OpenTelemetry.Exporter;
@@ -33,6 +36,7 @@ namespace OpenTelemetry.Trace
         /// </summary>
         /// <param name="builder"><see cref="TracerProviderBuilder"/> builder to use.</param>
         /// <returns>The instance of <see cref="TracerProviderBuilder"/> to chain the calls.</returns>
+        [Obsolete("Use AddOtlpTraceExporter instead this method will be removed in a future version.")]
         public static TracerProviderBuilder AddOtlpExporter(this TracerProviderBuilder builder)
             => AddOtlpExporter(builder, name: null, configure: null);
 
@@ -42,6 +46,7 @@ namespace OpenTelemetry.Trace
         /// <param name="builder"><see cref="TracerProviderBuilder"/> builder to use.</param>
         /// <param name="configure">Callback action for configuring <see cref="OtlpExporterOptions"/>.</param>
         /// <returns>The instance of <see cref="TracerProviderBuilder"/> to chain the calls.</returns>
+        [Obsolete("Use AddOtlpTraceExporter instead this method will be removed in a future version.")]
         public static TracerProviderBuilder AddOtlpExporter(this TracerProviderBuilder builder, Action<OtlpExporterOptions> configure)
             => AddOtlpExporter(builder, name: null, configure);
 
@@ -52,10 +57,11 @@ namespace OpenTelemetry.Trace
         /// <param name="name">Name which is used when retrieving options.</param>
         /// <param name="configure">Callback action for configuring <see cref="OtlpExporterOptions"/>.</param>
         /// <returns>The instance of <see cref="TracerProviderBuilder"/> to chain the calls.</returns>
+        [Obsolete("Use AddOtlpTraceExporter instead this method will be removed in a future version.")]
         public static TracerProviderBuilder AddOtlpExporter(
             this TracerProviderBuilder builder,
-            string name,
-            Action<OtlpExporterOptions> configure)
+            string? name,
+            Action<OtlpExporterOptions>? configure)
         {
             Guard.ThrowIfNull(builder);
 
@@ -63,21 +69,82 @@ namespace OpenTelemetry.Trace
 
             builder.ConfigureServices(services =>
             {
-                if (configure != null)
+                services.RegisterOptionsFactory(configuration => new SdkLimitOptions(configuration));
+            });
+
+            return builder.ConfigureBuilder((sp, builder) =>
+            {
+                var exporterOptions = new OtlpExporterOptions(
+                    sp.GetRequiredService<IConfiguration>(),
+                    sp.GetRequiredService<IOptionsMonitor<BatchExportActivityProcessorOptions>>().Get(name));
+
+                configure?.Invoke(exporterOptions);
+
+                // Note: Not using name here for SdkLimitOptions. There should
+                // only be one provider for a given service collection so
+                // SdkLimitOptions is treated as a single default instance.
+                var sdkOptionsManager = sp.GetRequiredService<IOptionsMonitor<SdkLimitOptions>>().CurrentValue;
+
+                AddOtlpExporter(builder, new(exporterOptions), sdkOptionsManager, sp);
+            });
+        }
+
+        /// <summary>
+        /// Adds <see cref="OtlpTraceExporter"/> to the <see cref="TracerProviderBuilder"/> using default options.
+        /// </summary>
+        /// <param name="builder"><see cref="TracerProviderBuilder"/> builder to use.</param>
+        /// <returns>The instance of <see cref="TracerProviderBuilder"/> to chain the calls.</returns>
+        public static TracerProviderBuilder AddOtlpTraceExporter(this TracerProviderBuilder builder)
+            => AddOtlpTraceExporter(builder, name: null, configureExporterOptions: null);
+
+        /// <summary>
+        /// Adds <see cref="OtlpTraceExporter"/> to the <see cref="TracerProviderBuilder"/>.
+        /// </summary>
+        /// <param name="builder"><see cref="TracerProviderBuilder"/> builder to use.</param>
+        /// <param name="configureExporterOptions">Callback action for configuring <see cref="OtlpTraceExporterOptions"/>.</param>
+        /// <returns>The instance of <see cref="TracerProviderBuilder"/> to chain the calls.</returns>
+        public static TracerProviderBuilder AddOtlpTraceExporter(
+            this TracerProviderBuilder builder,
+            Action<OtlpTraceExporterOptions> configureExporterOptions)
+        {
+            Guard.ThrowIfNull(configureExporterOptions);
+
+            return AddOtlpTraceExporter(builder, name: null, configureExporterOptions);
+        }
+
+        /// <summary>
+        /// Adds <see cref="OtlpTraceExporter"/> to the <see cref="TracerProviderBuilder"/>.
+        /// </summary>
+        /// <param name="builder"><see cref="TracerProviderBuilder"/> builder to use.</param>
+        /// <param name="name">Optional name which is used when retrieving options.</param>
+        /// <param name="configureExporterOptions">Optional callback action for configuring <see cref="OtlpTraceExporterOptions"/>.</param>
+        /// <returns>The instance of <see cref="TracerProviderBuilder"/> to chain the calls.</returns>
+        public static TracerProviderBuilder AddOtlpTraceExporter(
+            this TracerProviderBuilder builder,
+            string? name,
+            Action<OtlpTraceExporterOptions>? configureExporterOptions)
+        {
+            Guard.ThrowIfNull(builder);
+
+            name ??= Options.DefaultName;
+
+            builder.ConfigureServices(services =>
+            {
+                if (configureExporterOptions != null)
                 {
-                    services.Configure(name, configure);
+                    services.Configure(name, configureExporterOptions);
                 }
 
                 services.RegisterOptionsFactory(configuration => new SdkLimitOptions(configuration));
                 services.RegisterOptionsFactory(
-                    (sp, configuration) => new OtlpExporterOptions(
+                    (sp, configuration) => new OtlpTraceExporterOptions(
                         configuration,
                         sp.GetRequiredService<IOptionsMonitor<BatchExportActivityProcessorOptions>>().Get(name)));
             });
 
             return builder.ConfigureBuilder((sp, builder) =>
             {
-                var exporterOptions = sp.GetRequiredService<IOptionsMonitor<OtlpExporterOptions>>().Get(name);
+                var exporterOptions = sp.GetRequiredService<IOptionsMonitor<OtlpTraceExporterOptions>>().Get(name);
 
                 // Note: Not using name here for SdkLimitOptions. There should
                 // only be one provider for a given service collection so
@@ -90,10 +157,10 @@ namespace OpenTelemetry.Trace
 
         internal static TracerProviderBuilder AddOtlpExporter(
             TracerProviderBuilder builder,
-            OtlpExporterOptions exporterOptions,
+            OtlpTraceExporterOptions exporterOptions,
             SdkLimitOptions sdkLimitOptions,
             IServiceProvider serviceProvider,
-            Func<BaseExporter<Activity>, BaseExporter<Activity>> configureExporterInstance = null)
+            Func<BaseExporter<Activity>, BaseExporter<Activity>>? configureExporterInstance = null)
         {
             exporterOptions.TryEnableIHttpClientFactoryIntegration(serviceProvider, "OtlpTraceExporter");
 

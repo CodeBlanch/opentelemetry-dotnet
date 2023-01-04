@@ -24,7 +24,7 @@ namespace OpenTelemetry.Exporter.OpenTelemetryProtocol.Implementation.ExportClie
     {
         private readonly OtlpCollector.TraceService.TraceServiceClient traceClient;
 
-        public OtlpGrpcTraceExportClient(OtlpExporterOptions options, OtlpCollector.TraceService.TraceServiceClient traceServiceClient = null)
+        public OtlpGrpcTraceExportClient(OtlpExporterBaseOptions options, OtlpCollector.TraceService.TraceServiceClient traceServiceClient = null)
             : base(options)
         {
             if (traceServiceClient != null)

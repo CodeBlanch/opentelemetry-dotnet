@@ -1,4 +1,4 @@
-// <copyright file="OtlpLogExporter.cs" company="OpenTelemetry Authors">
+// <copyright file="OtlpMetricExporter.cs" company="OpenTelemetry Authors">
 // Copyright The OpenTelemetry Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,47 +17,49 @@
 using System.Diagnostics;
 using OpenTelemetry.Exporter.OpenTelemetryProtocol.Implementation;
 using OpenTelemetry.Exporter.OpenTelemetryProtocol.Implementation.ExportClient;
-using OpenTelemetry.Logs;
-using OtlpCollector = OpenTelemetry.Proto.Collector.Logs.V1;
+using OpenTelemetry.Metrics;
+using OtlpCollector = OpenTelemetry.Proto.Collector.Metrics.V1;
 using OtlpResource = OpenTelemetry.Proto.Resource.V1;
 
 namespace OpenTelemetry.Exporter
 {
     /// <summary>
-    /// Exporter consuming <see cref="LogRecord"/> and exporting the data using
+    /// Exporter consuming <see cref="Metric"/> and exporting the data using
     /// the OpenTelemetry protocol (OTLP).
     /// </summary>
-    internal sealed class OtlpLogExporter : BaseExporter<LogRecord>
+    public class OtlpMetricExporter : BaseExporter<Metric>
     {
-        private readonly SdkLimitOptions sdkLimitOptions;
-        private readonly IExportClient<OtlpCollector.ExportLogsServiceRequest> exportClient;
+        private readonly IExportClient<OtlpCollector.ExportMetricsServiceRequest> exportClient;
 
         private OtlpResource.Resource processResource;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OtlpLogExporter"/> class.
+        /// Initializes a new instance of the <see cref="OtlpMetricExporter"/> class.
         /// </summary>
         /// <param name="options">Configuration options for the exporter.</param>
-        public OtlpLogExporter(OtlpExporterOptions options)
-            : this(options, new(), null)
+        [Obsolete("Use the ctor accepting OtlpMetricExporterOptions instead this method will be removed in a future version.")]
+        public OtlpMetricExporter(OtlpExporterOptions options)
+            : this(new(options), null)
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="OtlpLogExporter"/> class.
+        /// Initializes a new instance of the <see cref="OtlpMetricExporter"/> class.
         /// </summary>
-        /// <param name="exporterOptions">Configuration options for the exporter.</param>
-        /// <param name="sdkLimitOptions"><see cref="SdkLimitOptions"/>.</param>
-        /// <param name="exportClient">Client used for sending export request.</param>
-        internal OtlpLogExporter(
-            OtlpExporterOptions exporterOptions,
-            SdkLimitOptions sdkLimitOptions,
-            IExportClient<OtlpCollector.ExportLogsServiceRequest> exportClient = null)
+        /// <param name="options">Configuration options for the exporter.</param>
+        public OtlpMetricExporter(OtlpMetricExporterOptions options)
+            : this(options, null)
         {
-            Debug.Assert(exporterOptions != null, "exporterOptions was null");
-            Debug.Assert(sdkLimitOptions != null, "sdkLimitOptions was null");
+        }
 
-            this.sdkLimitOptions = sdkLimitOptions;
+        /// <summary>
+        /// Initializes a new instance of the <see cref="OtlpMetricExporter"/> class.
+        /// </summary>
+        /// <param name="options">Configuration options for the export.</param>
+        /// <param name="exportClient">Client used for sending export request.</param>
+        internal OtlpMetricExporter(OtlpMetricExporterOptions options, IExportClient<OtlpCollector.ExportMetricsServiceRequest> exportClient = null)
+        {
+            Debug.Assert(options != null, "options was null");
 
             if (exportClient != null)
             {
@@ -65,23 +67,23 @@ namespace OpenTelemetry.Exporter
             }
             else
             {
-                this.exportClient = exporterOptions.GetLogExportClient();
+                this.exportClient = options.GetMetricsExportClient();
             }
         }
 
         internal OtlpResource.Resource ProcessResource => this.processResource ??= this.ParentProvider.GetResource().ToOtlpResource();
 
-        /// <inheritdoc/>
-        public override ExportResult Export(in Batch<LogRecord> logRecordBatch)
+        /// <inheritdoc />
+        public override ExportResult Export(in Batch<Metric> metrics)
         {
             // Prevents the exporter's gRPC and HTTP operations from being instrumented.
             using var scope = SuppressInstrumentationScope.Begin();
 
-            var request = new OtlpCollector.ExportLogsServiceRequest();
+            var request = new OtlpCollector.ExportMetricsServiceRequest();
 
             try
             {
-                request.AddBatch(this.sdkLimitOptions, this.ProcessResource, logRecordBatch);
+                request.AddMetrics(this.ProcessResource, metrics);
 
                 if (!this.exportClient.SendExportRequest(request))
                 {
@@ -92,6 +94,10 @@ namespace OpenTelemetry.Exporter
             {
                 OpenTelemetryProtocolExporterEventSource.Log.ExportMethodException(ex);
                 return ExportResult.Failure;
+            }
+            finally
+            {
+                request.Return();
             }
 
             return ExportResult.Success;
