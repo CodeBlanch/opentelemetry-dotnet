@@ -19,6 +19,7 @@ using System.Diagnostics;
 using System.Net.Http;
 #endif
 using System.Reflection;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using OpenTelemetry.Exporter;
@@ -72,7 +73,7 @@ namespace OpenTelemetry.Trace
                 }
 
                 services.RegisterOptionsFactory(
-                    (sp, configuration, name) => new JaegerExporterOptions(
+                    (IServiceProvider sp, IConfiguration configuration, ref string name) => new JaegerExporterOptions(
                         configuration,
                         sp.GetRequiredService<IOptionsMonitor<BatchExportActivityProcessorOptions>>().Get(name)));
             });

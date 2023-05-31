@@ -57,15 +57,13 @@ namespace OpenTelemetry.Metrics
         {
             Guard.ThrowIfNull(builder);
 
-            var finalOptionsName = name ?? Options.DefaultName;
-
             builder.ConfigureServices(services =>
             {
                 if (name != null && configureExporter != null)
                 {
                     // If we are using named options we register the
                     // configuration delegate into options pipeline.
-                    services.Configure(finalOptionsName, configureExporter);
+                    services.Configure(name, configureExporter);
                 }
 
                 OtlpExporterOptions.RegisterOtlpExporterOptionsFactory(services);
@@ -73,6 +71,8 @@ namespace OpenTelemetry.Metrics
 
             return builder.AddReader(sp =>
             {
+                var finalOptionsName = $"{OtlpExporterOptions.MetricSignalType}:{name ?? Options.DefaultName}";
+
                 OtlpExporterOptions exporterOptions;
 
                 if (name == null)
@@ -96,7 +96,7 @@ namespace OpenTelemetry.Metrics
 
                 return BuildOtlpExporterMetricReader(
                     exporterOptions,
-                    sp.GetRequiredService<IOptionsMonitor<MetricReaderOptions>>().Get(finalOptionsName),
+                    sp.GetRequiredService<IOptionsMonitor<MetricReaderOptions>>().Get(name ?? Options.DefaultName),
                     sp);
             });
         }
@@ -130,8 +130,6 @@ namespace OpenTelemetry.Metrics
         {
             Guard.ThrowIfNull(builder);
 
-            name ??= Options.DefaultName;
-
             builder.ConfigureServices(services =>
             {
                 OtlpExporterOptions.RegisterOtlpExporterOptionsFactory(services);
@@ -139,8 +137,27 @@ namespace OpenTelemetry.Metrics
 
             return builder.AddReader(sp =>
             {
-                var exporterOptions = sp.GetRequiredService<IOptionsMonitor<OtlpExporterOptions>>().Get(name);
-                var metricReaderOptions = sp.GetRequiredService<IOptionsMonitor<MetricReaderOptions>>().Get(name);
+                var finalOptionsName = $"{OtlpExporterOptions.MetricSignalType}:{name ?? Options.DefaultName}";
+
+                OtlpExporterOptions exporterOptions;
+
+                if (name == null)
+                {
+                    // If we are NOT using named options we create a new
+                    // instance always. The reason for this is
+                    // OtlpExporterOptions is shared by all signals. Without a
+                    // name, delegates for all signals will mix together. See:
+                    // https://github.com/open-telemetry/opentelemetry-dotnet/issues/4043
+                    exporterOptions = sp.GetRequiredService<IOptionsFactory<OtlpExporterOptions>>().Create(finalOptionsName);
+                }
+                else
+                {
+                    // When using named options we can properly utilize Options
+                    // API to create or reuse an instance.
+                    exporterOptions = sp.GetRequiredService<IOptionsMonitor<OtlpExporterOptions>>().Get(finalOptionsName);
+                }
+
+                var metricReaderOptions = sp.GetRequiredService<IOptionsMonitor<MetricReaderOptions>>().Get(name ?? Options.DefaultName);
 
                 configureExporterAndMetricReader?.Invoke(exporterOptions, metricReaderOptions);
 

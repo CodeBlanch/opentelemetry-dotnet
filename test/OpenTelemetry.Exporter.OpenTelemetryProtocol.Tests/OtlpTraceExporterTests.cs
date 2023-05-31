@@ -17,6 +17,7 @@
 using System.Diagnostics;
 using Google.Protobuf.Collections;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Moq;
 using OpenTelemetry.Exporter.OpenTelemetryProtocol.Implementation;
 using OpenTelemetry.Exporter.OpenTelemetryProtocol.Implementation.ExportClient;
@@ -49,6 +50,36 @@ namespace OpenTelemetry.Exporter.OpenTelemetryProtocol.Tests
             };
 
             ActivitySource.AddActivityListener(listener);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("custom_name")]
+        public void AddOtlpTraceExporterSignalSpecificOptionsSupported(string optionsName)
+        {
+            optionsName ??= Options.DefaultName;
+
+            Environment.SetEnvironmentVariable(OtlpExporterOptions.TraceEndpointEnvVarName, "http://test:8888");
+
+            Uri endpoint = null;
+
+            using var tracerProvider = Sdk.CreateTracerProviderBuilder()
+                .ConfigureServices(s =>
+                {
+                    s.Configure<OtlpExporterOptions>(
+                        optionsName,
+                        o =>
+                        {
+                            endpoint = o.Endpoint;
+                        });
+                })
+                .AddOtlpExporter(name: optionsName, configure: null)
+                .Build();
+
+            Assert.NotNull(tracerProvider);
+
+            Assert.NotNull(endpoint);
+            Assert.Equal("http://test:8888/", endpoint.ToString());
         }
 
         [Fact]

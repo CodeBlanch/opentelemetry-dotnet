@@ -59,15 +59,13 @@ namespace OpenTelemetry.Trace
         {
             Guard.ThrowIfNull(builder);
 
-            var finalOptionsName = name ?? Options.DefaultName;
-
             builder.ConfigureServices(services =>
             {
                 if (name != null && configure != null)
                 {
                     // If we are using named options we register the
                     // configuration delegate into options pipeline.
-                    services.Configure(finalOptionsName, configure);
+                    services.Configure(name, configure);
                 }
 
                 OtlpExporterOptions.RegisterOtlpExporterOptionsFactory(services);
@@ -76,6 +74,8 @@ namespace OpenTelemetry.Trace
 
             return builder.AddProcessor(sp =>
             {
+                var finalOptionsName = $"{OtlpExporterOptions.TraceSignalType}:{name ?? Options.DefaultName}";
+
                 OtlpExporterOptions exporterOptions;
 
                 if (name == null)

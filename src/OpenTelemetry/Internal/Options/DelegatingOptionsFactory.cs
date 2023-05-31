@@ -15,14 +15,13 @@
 
 #nullable enable
 
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 
 namespace Microsoft.Extensions.Options
 {
+    internal delegate TOptions DelegatingOptionsFactoryFunc<TOptions>(IServiceProvider serviceProvider, IConfiguration configuration, ref string name);
+
     /// <summary>
     /// Implementation of <see cref="IOptionsFactory{TOptions}"/>.
     /// </summary>
@@ -31,7 +30,8 @@ namespace Microsoft.Extensions.Options
         IOptionsFactory<TOptions>
         where TOptions : class, new()
     {
-        private readonly Func<IConfiguration, string, TOptions> optionsFactoryFunc;
+        private readonly DelegatingOptionsFactoryFunc<TOptions> optionsFactoryFunc;
+        private readonly IServiceProvider serviceProvider;
         private readonly IConfiguration configuration;
         private readonly IConfigureOptions<TOptions>[] _setups;
         private readonly IPostConfigureOptions<TOptions>[] _postConfigures;
@@ -44,7 +44,8 @@ namespace Microsoft.Extensions.Options
         /// <param name="postConfigures">The initialization actions to run.</param>
         /// <param name="validations">The validations to run.</param>
         public DelegatingOptionsFactory(
-            Func<IConfiguration, string, TOptions> optionsFactoryFunc,
+            DelegatingOptionsFactoryFunc<TOptions> optionsFactoryFunc,
+            IServiceProvider serviceProvider,
             IConfiguration configuration,
             IEnumerable<IConfigureOptions<TOptions>> setups,
             IEnumerable<IPostConfigureOptions<TOptions>> postConfigures,
@@ -56,9 +57,11 @@ namespace Microsoft.Extensions.Options
             // small trimmed applications.
 
             Debug.Assert(optionsFactoryFunc != null, "optionsFactoryFunc was null");
+            Debug.Assert(serviceProvider != null, "serviceProvider was null");
             Debug.Assert(configuration != null, "configuration was null");
 
             this.optionsFactoryFunc = optionsFactoryFunc!;
+            this.serviceProvider = serviceProvider!;
             this.configuration = configuration!;
             _setups = setups as IConfigureOptions<TOptions>[] ?? new List<IConfigureOptions<TOptions>>(setups).ToArray();
             _postConfigures = postConfigures as IPostConfigureOptions<TOptions>[] ?? new List<IPostConfigureOptions<TOptions>>(postConfigures).ToArray();
@@ -74,7 +77,7 @@ namespace Microsoft.Extensions.Options
         /// <exception cref="MissingMethodException">The <typeparamref name="TOptions"/> does not have a public parameterless constructor or <typeparamref name="TOptions"/> is <see langword="abstract"/>.</exception>
         public TOptions Create(string name)
         {
-            TOptions options = this.optionsFactoryFunc(this.configuration, name);
+            TOptions options = this.optionsFactoryFunc(this.serviceProvider, this.configuration, ref name);
             foreach (IConfigureOptions<TOptions> setup in _setups)
             {
                 if (setup is IConfigureNamedOptions<TOptions> namedSetup)

@@ -35,6 +35,12 @@ namespace OpenTelemetry.Exporter
     /// </summary>
     public class OtlpExporterOptions
     {
+        internal const string UnknownSignalType = "Unknown";
+        internal const string TraceSignalType = "Trace";
+        internal const string MetricSignalType = "Metric";
+
+        internal const string MetricEndpointEnvVarName = "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT";
+        internal const string TraceEndpointEnvVarName = "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT";
         internal const string EndpointEnvVarName = "OTEL_EXPORTER_OTLP_ENDPOINT";
         internal const string HeadersEnvVarName = "OTEL_EXPORTER_OTLP_HEADERS";
         internal const string TimeoutEnvVarName = "OTEL_EXPORTER_OTLP_TIMEOUT";
@@ -58,18 +64,20 @@ namespace OpenTelemetry.Exporter
         /// Initializes a new instance of the <see cref="OtlpExporterOptions"/> class.
         /// </summary>
         public OtlpExporterOptions()
-            : this(new ConfigurationBuilder().AddEnvironmentVariables().Build(), new())
+            : this(UnknownSignalType, new ConfigurationBuilder().AddEnvironmentVariables().Build(), new())
         {
         }
 
         internal OtlpExporterOptions(
+            string signalType,
             IConfiguration configuration,
             BatchExportActivityProcessorOptions defaultBatchOptions)
         {
             Debug.Assert(configuration != null, "configuration was null");
             Debug.Assert(defaultBatchOptions != null, "defaultBatchOptions was null");
 
-            if (configuration.TryGetUriValue(EndpointEnvVarName, out var endpoint))
+            if (configuration.TryGetUriValue(GetSignalSpecificEndpointEnvVarName(signalType), out var endpoint)
+                || configuration.TryGetUriValue(EndpointEnvVarName, out endpoint))
             {
                 this.endpoint = endpoint;
             }
@@ -197,10 +205,46 @@ namespace OpenTelemetry.Exporter
 
         internal static void RegisterOtlpExporterOptionsFactory(IServiceCollection services)
         {
-            services.RegisterOptionsFactory(
-                (sp, configuration, name) => new OtlpExporterOptions(
-                    configuration,
-                    sp.GetRequiredService<IOptionsMonitor<BatchExportActivityProcessorOptions>>().Get(name)));
+            services.RegisterOptionsFactory(CreateOtlpExporterOptionsInstance);
+        }
+
+        private static OtlpExporterOptions CreateOtlpExporterOptionsInstance(IServiceProvider sp, IConfiguration configuration, ref string name)
+        {
+            if (!string.IsNullOrEmpty(name))
+            {
+                var indexOfColon = name.IndexOf(':');
+                if (indexOfColon > 0)
+                {
+                    var signalType = name.Substring(0, indexOfColon);
+                    name = name.Substring(indexOfColon + 1);
+
+                    return new OtlpExporterOptions(
+                        signalType,
+                        configuration,
+                        sp.GetRequiredService<IOptionsMonitor<BatchExportActivityProcessorOptions>>().Get(name));
+                }
+            }
+
+            return new OtlpExporterOptions(
+                UnknownSignalType,
+                configuration,
+                sp.GetRequiredService<IOptionsMonitor<BatchExportActivityProcessorOptions>>().Get(name));
+        }
+
+        private static string GetSignalSpecificEndpointEnvVarName(string signalType)
+        {
+            if (signalType == TraceSignalType)
+            {
+                return TraceEndpointEnvVarName;
+            }
+            else if (signalType == MetricSignalType)
+            {
+                return MetricEndpointEnvVarName;
+            }
+            else
+            {
+                return "_______CONFIG_NO_KEY";
+            }
         }
 
         private static string GetUserAgentString()

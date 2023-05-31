@@ -128,7 +128,8 @@ internal static class ConfigurationExtensions
         services!.TryAddSingleton<IOptionsFactory<T>>(sp =>
         {
             return new DelegatingOptionsFactory<T>(
-                (c, n) => optionsFactoryFunc!(c),
+                (IServiceProvider sp, IConfiguration c, ref string n) => optionsFactoryFunc!(c),
+                sp,
                 sp.GetRequiredService<IConfiguration>(),
                 sp.GetServices<IConfigureOptions<T>>(),
                 sp.GetServices<IPostConfigureOptions<T>>(),
@@ -140,7 +141,7 @@ internal static class ConfigurationExtensions
 
     public static IServiceCollection RegisterOptionsFactory<T>(
         this IServiceCollection services,
-        Func<IServiceProvider, IConfiguration, string, T> optionsFactoryFunc)
+        DelegatingOptionsFactoryFunc<T> optionsFactoryFunc)
         where T : class, new()
     {
         Debug.Assert(services != null, "services was null");
@@ -149,7 +150,8 @@ internal static class ConfigurationExtensions
         services!.TryAddSingleton<IOptionsFactory<T>>(sp =>
         {
             return new DelegatingOptionsFactory<T>(
-                (c, n) => optionsFactoryFunc!(sp, c, n),
+                optionsFactoryFunc!,
+                sp,
                 sp.GetRequiredService<IConfiguration>(),
                 sp.GetServices<IConfigureOptions<T>>(),
                 sp.GetServices<IPostConfigureOptions<T>>(),

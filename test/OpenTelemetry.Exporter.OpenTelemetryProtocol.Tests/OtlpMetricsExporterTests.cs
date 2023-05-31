@@ -16,11 +16,11 @@
 
 using System.Diagnostics.Metrics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using OpenTelemetry.Exporter.OpenTelemetryProtocol.Implementation;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Tests;
-using OpenTelemetry.Trace;
 using Xunit;
 using OtlpCollector = OpenTelemetry.Proto.Collector.Metrics.V1;
 using OtlpMetrics = OpenTelemetry.Proto.Metrics.V1;
@@ -74,6 +74,66 @@ namespace OpenTelemetry.Exporter.OpenTelemetryProtocol.Tests
 
                 Assert.Equal(60000, exportIntervalMilliseconds);
             }
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("custom_name")]
+        public void AddOtlpMetricExporterWithoutReaderSignalSpecificOptionsSupported(string optionsName)
+        {
+            optionsName ??= Options.DefaultName;
+
+            Environment.SetEnvironmentVariable(OtlpExporterOptions.MetricEndpointEnvVarName, "http://test:8888");
+
+            Uri endpoint = null;
+
+            using var meterProvider = Sdk.CreateMeterProviderBuilder()
+                .ConfigureServices(s =>
+                {
+                    s.Configure<OtlpExporterOptions>(
+                        optionsName,
+                        o =>
+                        {
+                            endpoint = o.Endpoint;
+                        });
+                })
+                .AddOtlpExporter(name: optionsName, (OtlpExporterOptions o) => { })
+                .Build();
+
+            Assert.NotNull(meterProvider);
+
+            Assert.NotNull(endpoint);
+            Assert.Equal("http://test:8888/", endpoint.ToString());
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("custom_name")]
+        public void AddOtlpMetricExporterWithReaderSignalSpecificOptionsSupported(string optionsName)
+        {
+            optionsName ??= Options.DefaultName;
+
+            Environment.SetEnvironmentVariable(OtlpExporterOptions.MetricEndpointEnvVarName, "http://test:8888");
+
+            Uri endpoint = null;
+
+            using var meterProvider = Sdk.CreateMeterProviderBuilder()
+                .ConfigureServices(s =>
+                {
+                    s.Configure<OtlpExporterOptions>(
+                        optionsName,
+                        o =>
+                        {
+                            endpoint = o.Endpoint;
+                        });
+                })
+                .AddOtlpExporter(name: optionsName, (OtlpExporterOptions exporterOptions, MetricReaderOptions readerOptions) => { })
+                .Build();
+
+            Assert.NotNull(meterProvider);
+
+            Assert.NotNull(endpoint);
+            Assert.Equal("http://test:8888/", endpoint.ToString());
         }
 
         [Fact]
