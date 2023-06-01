@@ -15,6 +15,7 @@
 // </copyright>
 
 #nullable enable
+using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Tracing;
@@ -155,6 +156,15 @@ namespace OpenTelemetry.Internal
             if (this.IsEnabled(EventLevel.Error, EventKeywords.All))
             {
                 this.LoggerProviderException(methodName, ex.ToInvariantString());
+            }
+        }
+
+        [NonEvent]
+        public void LoggerStateParsingSkipped<TState>()
+        {
+            if (this.IsEnabled(EventLevel.Warning, EventKeywords.All))
+            {
+                this.LoggerParseStateSkipped(typeof(TState).FullName!);
             }
         }
 
@@ -323,6 +333,12 @@ namespace OpenTelemetry.Internal
         public void LoggerProviderException(string methodName, string ex)
         {
             this.WriteEvent(50, methodName, ex);
+        }
+
+        [Event(51, Message = "Log state of type '{0}' will not be parsed", Level = EventLevel.Warning)]
+        public void LoggerParseStateSkipped(string type)
+        {
+            this.WriteEvent(51, type);
         }
 
 #if DEBUG
