@@ -16,6 +16,7 @@
 
 using System.Diagnostics.Metrics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using OpenTelemetry.Exporter.OpenTelemetryProtocol.Implementation;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -101,6 +102,38 @@ namespace OpenTelemetry.Exporter.OpenTelemetryProtocol.Tests
 
             Assert.Equal(2, defaultExporterOptionsConfigureOptionsInvocations);
             Assert.Equal(4, namedExporterOptionsConfigureOptionsInvocations);
+        }
+
+        [Fact]
+        public void AddOtlpExporterOptionsIntegrationTest()
+        {
+            var services = new ServiceCollection();
+
+            services.Configure<OtlpExporterOptions>("Metrics", o => o.Endpoint = new Uri("http://www.test1.com"));
+            services.AddOpenTelemetry().WithMetrics(builder => builder.AddOtlpExporter("Metrics", o => o.Endpoint = new Uri("http://www.test2.com")));
+
+            using var sp = services.BuildServiceProvider();
+
+            var options = sp.GetRequiredService<IOptionsMonitor<OtlpExporterOptions>>().Get("Metrics");
+
+            // This passes because the delegate passed to AddOtlpExporter gets registered with options api
+            Assert.Equal("http://www.test2.com/", options.Endpoint.ToString());
+        }
+
+        [Fact]
+        public void AddOtlpExporterOptionsWithReaderIntegrationTest()
+        {
+            var services = new ServiceCollection();
+
+            services.Configure<OtlpExporterOptions>("Metrics", o => o.Endpoint = new Uri("http://www.test1.com"));
+            services.AddOpenTelemetry().WithMetrics(builder => builder.AddOtlpExporter("Metrics", (eo, ro) => eo.Endpoint = new Uri("http://www.test2.com")));
+
+            using var sp = services.BuildServiceProvider();
+
+            var options = sp.GetRequiredService<IOptionsMonitor<OtlpExporterOptions>>().Get("Metrics");
+
+            // This fails because the delegate passed to AddOtlpExporter does NOT get registered with options api
+            Assert.Equal("http://www.test2.com/", options.Endpoint.ToString());
         }
 
         [Fact]
