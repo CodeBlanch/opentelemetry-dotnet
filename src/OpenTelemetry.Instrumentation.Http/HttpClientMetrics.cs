@@ -29,14 +29,13 @@ namespace OpenTelemetry.Instrumentation.Http
         internal static readonly string InstrumentationName = AssemblyName.Name;
         internal static readonly string InstrumentationVersion = AssemblyName.Version.ToString();
 
+        private readonly HttpClientMetricInstrumentationOptions options;
         private readonly DiagnosticSourceSubscriber diagnosticSourceSubscriber;
         private readonly Meter meter;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="HttpClientMetrics"/> class.
-        /// </summary>
-        public HttpClientMetrics()
+        public HttpClientMetrics(HttpClientMetricInstrumentationOptions options)
         {
+            this.options = options;
             this.meter = new Meter(InstrumentationName, InstrumentationVersion);
             this.diagnosticSourceSubscriber = new DiagnosticSourceSubscriber(new HttpHandlerMetricsDiagnosticListener("HttpHandlerDiagnosticListener", this.meter), null);
             this.diagnosticSourceSubscriber.Subscribe();

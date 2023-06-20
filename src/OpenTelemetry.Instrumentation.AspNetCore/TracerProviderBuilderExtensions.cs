@@ -17,6 +17,7 @@
 #if NET7_0_OR_GREATER
 using System.Diagnostics;
 #endif
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using OpenTelemetry.Instrumentation.AspNetCore;
@@ -68,10 +69,15 @@ namespace OpenTelemetry.Trace
 
             name ??= Options.DefaultName;
 
-            if (configureAspNetCoreInstrumentationOptions != null)
+            builder.ConfigureServices(services =>
             {
-                builder.ConfigureServices(services => services.Configure(name, configureAspNetCoreInstrumentationOptions));
-            }
+                if (configureAspNetCoreInstrumentationOptions != null)
+                {
+                    services.Configure(name, configureAspNetCoreInstrumentationOptions);
+                }
+
+                services.RegisterOptionsFactory(configuration => new AspNetCoreInstrumentationOptions(configuration));
+            });
 
             if (builder is IDeferredTracerProviderBuilder deferredTracerProviderBuilder)
             {
