@@ -30,7 +30,7 @@ namespace OpenTelemetry.Exporter
     public class OtlpTraceExporter : BaseExporter<Activity>
     {
         private readonly SdkLimitOptions sdkLimitOptions;
-        private readonly IExportClient<OtlpCollector.ExportTraceServiceRequest> exportClient;
+        private readonly OtlpExporterTransmissionHandler<OtlpCollector.ExportTraceServiceRequest> transmissionHandler;
 
         private OtlpResource.Resource processResource;
 
@@ -39,7 +39,7 @@ namespace OpenTelemetry.Exporter
         /// </summary>
         /// <param name="options">Configuration options for the export.</param>
         public OtlpTraceExporter(OtlpExporterOptions options)
-            : this(options, new(), null)
+            : this(options, new(), null, null)
         {
         }
 
@@ -52,7 +52,8 @@ namespace OpenTelemetry.Exporter
         internal OtlpTraceExporter(
             OtlpExporterOptions exporterOptions,
             SdkLimitOptions sdkLimitOptions,
-            IExportClient<OtlpCollector.ExportTraceServiceRequest> exportClient = null)
+            IExportClient<OtlpCollector.ExportTraceServiceRequest> exportClient = null,
+            OtlpExporterTransmissionHandler<OtlpCollector.ExportTraceServiceRequest> transmissionHandler = null)
         {
             Debug.Assert(exporterOptions != null, "exporterOptions was null");
             Debug.Assert(sdkLimitOptions != null, "sdkLimitOptions was null");
@@ -69,14 +70,12 @@ namespace OpenTelemetry.Exporter
                 OpenTelemetryProtocolExporterEventSource.Log.InvalidEnvironmentVariable(key, value);
             };
 
-            if (exportClient != null)
-            {
-                this.exportClient = exportClient;
-            }
-            else
-            {
-                this.exportClient = exporterOptions.GetTraceExportClient();
-            }
+            exportClient ??= exporterOptions.GetTraceExportClient();
+
+            transmissionHandler ??= new OtlpExporterTransmissionHandler<OtlpCollector.ExportTraceServiceRequest>();
+
+            transmissionHandler.ExportClient = exportClient;
+            transmissionHandler.Options = exporterOptions;
         }
 
         internal OtlpResource.Resource ProcessResource => this.processResource ??= this.ParentProvider.GetResource().ToOtlpResource();
@@ -93,28 +92,20 @@ namespace OpenTelemetry.Exporter
             {
                 request.AddBatch(this.sdkLimitOptions, this.ProcessResource, activityBatch);
 
-                if (!this.exportClient.SendExportRequest(request))
-                {
-                    return ExportResult.Failure;
-                }
-            }
-            catch (Exception ex)
-            {
-                OpenTelemetryProtocolExporterEventSource.Log.ExportMethodException(ex);
-                return ExportResult.Failure;
+                return this.transmissionHandler.SubmitRequest(request)
+                    ? ExportResult.Success
+                    : ExportResult.Failure;
             }
             finally
             {
                 request.Return();
             }
-
-            return ExportResult.Success;
         }
 
         /// <inheritdoc />
         protected override bool OnShutdown(int timeoutMilliseconds)
         {
-            return this.exportClient?.Shutdown(timeoutMilliseconds) ?? true;
+            return this.transmissionHandler.ExportClient?.Shutdown(timeoutMilliseconds) ?? true;
         }
     }
 }

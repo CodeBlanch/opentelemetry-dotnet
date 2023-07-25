@@ -16,10 +16,12 @@
 
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Exporter.OpenTelemetryProtocol.Implementation;
 using OpenTelemetry.Internal;
+using OtlpCollector = OpenTelemetry.Proto.Collector.Trace.V1;
 
 namespace OpenTelemetry.Trace
 {
@@ -72,6 +74,10 @@ namespace OpenTelemetry.Trace
 
                 OtlpExporterOptions.RegisterOtlpExporterOptionsFactory(services);
                 services.RegisterOptionsFactory(configuration => new SdkLimitOptions(configuration));
+
+                services.TryAddSingleton<
+                    OtlpExporterTransmissionHandler<OtlpCollector.ExportTraceServiceRequest>,
+                    OtlpExporterRetryTransmissionHandler<OtlpCollector.ExportTraceServiceRequest>>();
             });
 
             return builder.AddProcessor(sp =>
@@ -115,7 +121,10 @@ namespace OpenTelemetry.Trace
         {
             exporterOptions.TryEnableIHttpClientFactoryIntegration(serviceProvider, "OtlpTraceExporter");
 
-            BaseExporter<Activity> otlpExporter = new OtlpTraceExporter(exporterOptions, sdkLimitOptions);
+            BaseExporter<Activity> otlpExporter = new OtlpTraceExporter(
+                exporterOptions,
+                sdkLimitOptions,
+                transmissionHandler: serviceProvider.GetRequiredService<OtlpExporterTransmissionHandler<OtlpCollector.ExportTraceServiceRequest>>());
 
             if (configureExporterInstance != null)
             {
