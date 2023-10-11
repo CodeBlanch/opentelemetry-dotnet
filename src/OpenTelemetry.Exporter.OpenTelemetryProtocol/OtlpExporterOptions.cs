@@ -53,6 +53,7 @@ public class OtlpExporterOptions
     private const string UserAgentProduct = "OTel-OTLP-Exporter-Dotnet";
 
     private Uri endpoint;
+    private OtlpExportProtocol? protocol;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="OtlpExporterOptions"/> class.
@@ -145,7 +146,11 @@ public class OtlpExporterOptions
     /// <summary>
     /// Gets or sets the the OTLP transport protocol. Supported values: Grpc and HttpProtobuf.
     /// </summary>
-    public OtlpExportProtocol Protocol { get; set; } = DefaultOtlpExportProtocol;
+    public OtlpExportProtocol Protocol
+    {
+        get => this.protocol ?? DefaultOtlpExportProtocol;
+        set => this.protocol = value;
+    }
 
     /// <summary>
     /// Gets or sets the export processor type to be used with the OpenTelemetry Protocol Exporter. The default value is <see cref="ExportProcessorType.Batch"/>.
@@ -203,6 +208,28 @@ public class OtlpExporterOptions
             (sp, configuration, name) => new OtlpExporterOptions(
                 configuration,
                 sp.GetRequiredService<IOptionsMonitor<BatchExportActivityProcessorOptions>>().Get(name)));
+    }
+
+    internal static OtlpExporterOptions Merge(OtlpExporterOptions defaultInstance, OtlpExporterOptions signalInstance)
+    {
+        if (signalInstance.endpoint == null)
+        {
+            signalInstance.endpoint = defaultInstance.endpoint;
+        }
+
+        if (signalInstance.protocol == null)
+        {
+            signalInstance.protocol = defaultInstance.protocol;
+        }
+
+        if (signalInstance.Headers == null)
+        {
+            signalInstance.Headers = defaultInstance.Headers;
+        }
+
+        // todo: Handle merge for other settings.
+
+        return signalInstance;
     }
 
     private static string GetUserAgentString()

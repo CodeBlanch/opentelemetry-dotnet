@@ -34,6 +34,8 @@ public sealed class OtlpExporterBuilderOptions
         IConfiguration configuration,
         BatchExportActivityProcessorOptions defaultBatchOptions)
     {
+        this.DefaultOptions = new OtlpExporterOptions(configuration, defaultBatchOptions);
+
         this.LoggingOptions = new OtlpExporterOptions(configuration, defaultBatchOptions);
 
         this.MetricsOptions = new OtlpExporterOptions(configuration, defaultBatchOptions);
@@ -61,6 +63,8 @@ public sealed class OtlpExporterBuilderOptions
     public bool EnableMetrics { get; set; } = true;
 
     public bool EnableTracing { get; set; } = true;
+
+    public OtlpExporterOptions DefaultOptions { get; }
 
     public OtlpExporterOptions LoggingOptions { get; }
 

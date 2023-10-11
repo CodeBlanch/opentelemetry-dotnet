@@ -18,6 +18,7 @@
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Exporter.OpenTelemetryProtocol.Implementation;
 using OpenTelemetry.Internal;
 using OpenTelemetry.Logs;
@@ -74,7 +75,7 @@ public static class OpenTelemetryBuilderOtlpExporterExtensions
 
                 logging.AddProcessor(
                     OtlpLogExporterHelperExtensions.BuildOtlpLogExporter(
-                        builderOptions.LoggingOptions,
+                        OtlpExporterOptions.Merge(builderOptions.DefaultOptions, builderOptions.LoggingOptions),
                         sp.GetRequiredService<IOptionsMonitor<LogRecordExportProcessorOptions>>().Get(name)));
             });
 
@@ -90,7 +91,7 @@ public static class OpenTelemetryBuilderOtlpExporterExtensions
 
                 metrics.AddReader(
                     OtlpMetricExporterExtensions.BuildOtlpExporterMetricReader(
-                        builderOptions.TracingOptions,
+                        OtlpExporterOptions.Merge(builderOptions.DefaultOptions, builderOptions.MetricsOptions),
                         sp.GetRequiredService<IOptionsMonitor<MetricReaderOptions>>().Get(name),
                         sp));
             });
@@ -107,7 +108,7 @@ public static class OpenTelemetryBuilderOtlpExporterExtensions
 
                 tracing.AddProcessor(
                     OtlpTraceExporterHelperExtensions.BuildOtlpExporterProcessor(
-                        builderOptions.TracingOptions,
+                        OtlpExporterOptions.Merge(builderOptions.DefaultOptions, builderOptions.TracingOptions),
                         sp.GetRequiredService<IOptionsMonitor<SdkLimitOptions>>().CurrentValue,
                         sp));
             });
