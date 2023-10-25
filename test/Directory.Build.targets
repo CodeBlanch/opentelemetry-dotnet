@@ -1,10 +1,11 @@
 <Project>
-  <ItemGroup Condition="'$(TargetFramework)'=='net462'">
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' != '.NETCoreApp'">
     <!--ImplicitUsings will add this namespace that is not available for NetFX.
     https://github.com/dotnet/sdk/issues/24146
     https://github.com/dotnet/runtime/issues/59163
     https://github.com/dotnet/sdk/issues/22515
     -->
     <Using Remove="System.Net.Http" />
+    <Using Remove="System.Net.Http.Json" />
   </ItemGroup>
 </Project>

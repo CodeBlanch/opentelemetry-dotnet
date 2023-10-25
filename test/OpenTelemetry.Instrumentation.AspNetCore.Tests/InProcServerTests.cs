@@ -15,9 +15,12 @@
 // </copyright>
 
 using System.Diagnostics;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Logging;
+#if NETFRAMEWORK
+using System.Net.Http;
+#endif
+using Microsoft.AspNetCore.Http;
 using OpenTelemetry.Trace;
+using TestApp.AspNetCore;
 using Xunit;
 
 namespace OpenTelemetry.Instrumentation.AspNetCore.Tests;
@@ -25,21 +28,24 @@ namespace OpenTelemetry.Instrumentation.AspNetCore.Tests;
 public sealed class InProcServerTests : IDisposable
 {
     private TracerProvider tracerProvider;
-    private WebApplication app;
+    private IDisposable app;
     private HttpClient client;
     private List<Activity> exportedItems;
 
     public InProcServerTests()
     {
         this.exportedItems = new List<Activity>();
-        var builder = WebApplication.CreateBuilder();
-        builder.Logging.ClearProviders();
-        var app = builder.Build();
+
+        var app = new TestWebHostHelper(
+            routes: new (string, RequestDelegate)[]
+            {
+                ("/", context => context.Response.WriteAsync("Hello World!")),
+            });
 
         this.tracerProvider = Sdk.CreateTracerProviderBuilder()
             .AddAspNetCoreInstrumentation()
             .AddInMemoryExporter(this.exportedItems).Build();
-        app.MapGet("/", () => "Hello World!");
+
         app.RunAsync();
 
         this.app = app;
@@ -77,10 +83,10 @@ public sealed class InProcServerTests : IDisposable
         Assert.True(activity.StatusDescription is null);
     }
 
-    public async void Dispose()
+    public void Dispose()
     {
         this.tracerProvider.Dispose();
         this.client.Dispose();
-        await this.app.DisposeAsync().ConfigureAwait(false);
+        this.app.Dispose();
     }
 }

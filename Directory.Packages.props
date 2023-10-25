@@ -13,8 +13,11 @@
     <PackageVersion Include="Google.Protobuf" Version="[3.22.5,4.0)" />
     <PackageVersion Include="Grpc" Version="[2.44.0,3.0)" />
     <PackageVersion Include="Grpc.Net.Client" Version="[2.52.0,3.0)" />
+    <PackageVersion Include="Microsoft.AspNetCore" Version="[2.1.1,6.0)" />
     <PackageVersion Include="Microsoft.AspNetCore.Http.Abstractions" Version="[2.1.1,6.0)" />
     <PackageVersion Include="Microsoft.AspNetCore.Http.Features" Version="[2.1.1,6.0)" />
+    <PackageVersion Include="Microsoft.AspNetCore.HttpsPolicy" Version="[2.1.1,6.0)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc" Version="[2.1.1,6.0)" />
     <PackageVersion Include="Microsoft.CSharp" Version="[4.7.0]" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="[3.1.0,)" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="[3.1.0,)" />
@@ -93,6 +96,10 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="[2.5.0,3.0)" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' != '.NETCoreApp'">
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="2.1.1" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="2.1.1" />
+  </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
     <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="6.0.21" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="6.0.21" />

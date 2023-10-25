@@ -36,6 +36,9 @@ internal sealed class AspNetCoreMetrics : IDisposable
         "Microsoft.AspNetCore.Hosting.HttpRequestIn",
         "Microsoft.AspNetCore.Hosting.HttpRequestIn.Start",
         "Microsoft.AspNetCore.Hosting.HttpRequestIn.Stop",
+#if NETSTANDARD2_0_OR_GREATER || NETFRAMEWORK
+        "Microsoft.AspNetCore.Mvc.BeforeAction",
+#endif
     };
 
     private readonly Func<string, object, object, bool> isEnabled = (eventName, _, _)

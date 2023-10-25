@@ -14,52 +14,111 @@
 // limitations under the License.
 // </copyright>
 
+#if !NET6_0_OR_GREATER
+using System.Net.Http;
+using Microsoft.AspNetCore;
+#endif
+
 using TestApp.AspNetCore;
 
 public class Program
 {
+#if !NET6_0_OR_GREATER
+    public static void Main(string[] args)
+    {
+        CreateWebHostBuilder(args).Build().Run();
+    }
+
+    public static IWebHostBuilder CreateWebHostBuilder(string[] args)
+        => WebHost.CreateDefaultBuilder(args)
+            .UseStartup<Startup>();
+#else
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
 
-        // Add services to the container.
-
-        builder.Services.AddControllers();
-
-        // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-        builder.Services.AddEndpointsApiExplorer();
-
-        builder.Services.AddSwaggerGen();
-
-        builder.Services.AddMvc();
-
-        builder.Services.AddSingleton<HttpClient>();
-
-        builder.Services.AddSingleton(
-            new CallbackMiddleware.CallbackMiddlewareImpl());
-
-        builder.Services.AddSingleton(
-            new ActivityMiddleware.ActivityMiddlewareImpl());
+        ConfigureServices(builder.Services);
 
         var app = builder.Build();
 
+        Configure(app);
+
+        app.Run();
+    }
+#endif
+
+    private static void ConfigureServices(IServiceCollection services)
+    {
+#if NET6_0_OR_GREATER
+        services.AddControllers();
+
+        // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+        services.AddEndpointsApiExplorer();
+#endif
+
+        services.AddSwaggerGen();
+
+        services.AddMvc();
+
+        services.AddSingleton<HttpClient>();
+
+        services.AddSingleton(
+            new CallbackMiddleware.CallbackMiddlewareImpl());
+
+        services.AddSingleton(
+            new ActivityMiddleware.ActivityMiddlewareImpl());
+    }
+
+    private static void Configure(
+#if !NET6_0_OR_GREATER
+        IApplicationBuilder app)
+#else
+        WebApplication app)
+#endif
+    {
+#if !NET6_0_OR_GREATER
+        var environment = app.ApplicationServices.GetRequiredService<Microsoft.AspNetCore.Hosting.IHostingEnvironment>();
+#else
+        var environment = app.Environment;
+#endif
+
         // Configure the HTTP request pipeline.
-        if (app.Environment.IsDevelopment())
+        if (environment.IsDevelopment())
         {
+#if !NET6_0_OR_GREATER
+            app.UseDeveloperExceptionPage();
+#endif
             app.UseSwagger();
             app.UseSwaggerUI();
         }
 
         app.UseHttpsRedirection();
 
-        app.UseAuthorization();
-
+#if NET6_0_OR_GREATER
         app.MapControllers();
+#endif
 
         app.UseMiddleware<CallbackMiddleware>();
 
         app.UseMiddleware<ActivityMiddleware>();
 
-        app.Run();
+#if !NET6_0_OR_GREATER
+        app.UseMvc();
+#endif
     }
+
+#if !NET6_0_OR_GREATER
+    private sealed class Startup
+    {
+        public void ConfigureServices(IServiceCollection services)
+        {
+            Program.ConfigureServices(services);
+        }
+
+        public void Configure(IApplicationBuilder app)
+        {
+            Program.Configure(app);
+        }
+    }
+#endif
 }

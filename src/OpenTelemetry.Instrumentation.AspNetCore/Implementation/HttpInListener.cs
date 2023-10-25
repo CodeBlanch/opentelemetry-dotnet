@@ -54,6 +54,10 @@ internal class HttpInListener : ListenerHandler
     internal static readonly string ActivitySourceName = AssemblyName.Name;
     internal static readonly Version Version = AssemblyName.Version;
     internal static readonly ActivitySource ActivitySource = new(ActivitySourceName, Version.ToString());
+#if NETSTANDARD2_0_OR_GREATER || NETFRAMEWORK
+    internal static readonly PropertyFetcher<HttpContext> StartContextFetcher = new("HttpContext");
+    internal static readonly PropertyFetcher<HttpContext> StopContextFetcher = new("HttpContext");
+#endif
 
     private const string DiagnosticSourceName = "Microsoft.AspNetCore";
     private const string UnknownHostName = "UNKNOWN-HOST";
@@ -62,9 +66,10 @@ internal class HttpInListener : ListenerHandler
     private static readonly PropertyFetcher<Exception> ExceptionPropertyFetcher = new("Exception");
 
 #if !NET6_0_OR_GREATER
-    private readonly PropertyFetcher<object> beforeActionActionDescriptorFetcher = new("actionDescriptor");
-    private readonly PropertyFetcher<object> beforeActionAttributeRouteInfoFetcher = new("AttributeRouteInfo");
-    private readonly PropertyFetcher<string> beforeActionTemplateFetcher = new("Template");
+    private static readonly PropertyFetcher<HttpContext> BeforeActionActionHttpContextFetcher = new("httpContext");
+    private static readonly PropertyFetcher<object> BeforeActionActionDescriptorFetcher = new("actionDescriptor");
+    private static readonly PropertyFetcher<object> BeforeActionAttributeRouteInfoFetcher = new("AttributeRouteInfo");
+    private static readonly PropertyFetcher<string> BeforeActionTemplateFetcher = new("Template");
 #endif
     private readonly AspNetCoreInstrumentationOptions options;
     private readonly bool emitOldAttributes;
@@ -131,7 +136,11 @@ internal class HttpInListener : ListenerHandler
             return;
         }
 
+#if NETSTANDARD2_0_OR_GREATER || NETFRAMEWORK
+        StartContextFetcher.TryFetch(payload, out HttpContext context);
+#else
         HttpContext context = payload as HttpContext;
+#endif
         if (context == null)
         {
             AspNetCoreInstrumentationEventSource.Log.NullPayload(nameof(HttpInListener), nameof(this.OnStartActivity), activity.OperationName);
@@ -282,7 +291,11 @@ internal class HttpInListener : ListenerHandler
     {
         if (activity.IsAllDataRequested)
         {
+#if NETSTANDARD2_0_OR_GREATER || NETFRAMEWORK
+            StopContextFetcher.TryFetch(payload, out HttpContext context);
+#else
             HttpContext context = payload as HttpContext;
+#endif
             if (context == null)
             {
                 AspNetCoreInstrumentationEventSource.Log.NullPayload(nameof(HttpInListener), nameof(this.OnStopActivity), activity.OperationName);
@@ -301,7 +314,7 @@ internal class HttpInListener : ListenerHandler
                 activity.SetTag(SemanticConventions.AttributeHttpResponseStatusCode, TelemetryHelper.GetBoxedStatusCode(response.StatusCode));
             }
 
-#if !NETSTANDARD2_0
+#if NETSTANDARD2_1_OR_GREATER || NET6_0_OR_GREATER
             if (this.options.EnableGrpcAspNetCoreSupport && TryGetGrpcMethod(activity, out var grpcMethod))
             {
                 this.AddGrpcAttributes(activity, grpcMethod, context);
@@ -354,52 +367,13 @@ internal class HttpInListener : ListenerHandler
 
     public void OnMvcBeforeAction(Activity activity, object payload)
     {
-        // We cannot rely on Activity.Current here
-        // There could be activities started by middleware
-        // after activity started by framework resulting in different Activity.Current.
-        // so, we need to first find the activity started by Asp.Net Core.
-        // For .net6.0 onwards we could use IHttpActivityFeature to get the activity created by framework
-        // var httpActivityFeature = context.Features.Get<IHttpActivityFeature>();
-        // activity = httpActivityFeature.Activity;
-        // However, this will not work as in case of custom propagator
-        // we start a new activity during onStart event which is a sibling to the activity created by framework
-        // So, in that case we need to get the activity created by us here.
-        // we can do so only by looping through activity.Parent chain.
-        while (activity != null)
+        if (TryResolveAspNetCoreActivity(activity, out var aspNetCoreActivity)
+            && aspNetCoreActivity.IsAllDataRequested
+            && TryGetRouteTemplate(payload, out _, out var routeTemplate))
         {
-            if (string.Equals(activity.OperationName, ActivityOperationName, StringComparison.Ordinal))
-            {
-                break;
-            }
-
-            activity = activity.Parent;
-        }
-
-        if (activity == null)
-        {
-            return;
-        }
-
-        if (activity.IsAllDataRequested)
-        {
-#if !NET6_0_OR_GREATER
-            _ = this.beforeActionActionDescriptorFetcher.TryFetch(payload, out var actionDescriptor);
-            _ = this.beforeActionAttributeRouteInfoFetcher.TryFetch(actionDescriptor, out var attributeRouteInfo);
-            _ = this.beforeActionTemplateFetcher.TryFetch(attributeRouteInfo, out var template);
-#else
-            var beforeActionEventData = payload as BeforeActionEventData;
-            var template = beforeActionEventData.ActionDescriptor?.AttributeRouteInfo?.Template;
-#endif
-            if (!string.IsNullOrEmpty(template))
-            {
-                // override the span name that was previously set to the path part of URL.
-                activity.DisplayName = template;
-                activity.SetTag(SemanticConventions.AttributeHttpRoute, template);
-            }
-
-            // TODO: Should we get values from RouteData?
-            // private readonly PropertyFetcher beforeActionRouteDataFetcher = new PropertyFetcher("routeData");
-            // var routeData = this.beforeActionRouteDataFetcher.Fetch(payload) as RouteData;
+            // override the span name that was previously set to the path part of URL.
+            aspNetCoreActivity.DisplayName = routeTemplate;
+            aspNetCoreActivity.SetTag(SemanticConventions.AttributeHttpRoute, routeTemplate);
         }
     }
 
@@ -439,6 +413,59 @@ internal class HttpInListener : ListenerHandler
 #endif
         static bool TryFetchException(object payload, out Exception exc)
             => ExceptionPropertyFetcher.TryFetch(payload, out exc) && exc != null;
+    }
+
+    internal static bool TryResolveAspNetCoreActivity(
+        Activity currentActivity,
+        out Activity aspNetCoreActivity)
+    {
+        aspNetCoreActivity = currentActivity;
+
+        // We cannot rely on Activity.Current here
+        // There could be activities started by middleware
+        // after activity started by framework resulting in different Activity.Current.
+        // so, we need to first find the activity started by Asp.Net Core.
+        // For .net6.0 onwards we could use IHttpActivityFeature to get the activity created by framework
+        // var httpActivityFeature = context.Features.Get<IHttpActivityFeature>();
+        // activity = httpActivityFeature.Activity;
+        // However, this will not work as in case of custom propagator
+        // we start a new activity during onStart event which is a sibling to the activity created by framework
+        // So, in that case we need to get the activity created by us here.
+        // we can do so only by looping through activity.Parent chain.
+        while (aspNetCoreActivity != null)
+        {
+            if (string.Equals(aspNetCoreActivity.OperationName, ActivityOperationName, StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            aspNetCoreActivity = aspNetCoreActivity.Parent;
+        }
+
+        return false;
+    }
+
+    internal static bool TryGetRouteTemplate(
+        object payload,
+        out HttpContext context,
+        out string routeTemplate)
+    {
+#if NETSTANDARD2_0_OR_GREATER || NETFRAMEWORK
+        _ = BeforeActionActionHttpContextFetcher.TryFetch(payload, out context);
+        _ = BeforeActionActionDescriptorFetcher.TryFetch(payload, out var actionDescriptor);
+        _ = BeforeActionAttributeRouteInfoFetcher.TryFetch(actionDescriptor, out var attributeRouteInfo);
+        _ = BeforeActionTemplateFetcher.TryFetch(attributeRouteInfo, out routeTemplate);
+#else
+        var beforeActionEventData = payload as BeforeActionEventData;
+        context = beforeActionEventData?.HttpContext;
+        routeTemplate = beforeActionEventData?.ActionDescriptor?.AttributeRouteInfo?.Template;
+#endif
+        /* TODO: Should we get values from RouteData?
+            private readonly PropertyFetcher beforeActionRouteDataFetcher = new PropertyFetcher("routeData");
+            var routeData = this.beforeActionRouteDataFetcher.Fetch(payload) as RouteData;
+        */
+
+        return context != null && !string.IsNullOrEmpty(routeTemplate);
     }
 
     private static string GetUri(HttpRequest request)

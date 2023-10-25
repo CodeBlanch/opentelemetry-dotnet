@@ -31,9 +31,10 @@ internal sealed class HttpInMetricsListener : ListenerHandler
     internal const string HttpServerDurationMetricName = "http.server.duration";
     internal const string HttpServerRequestDurationMetricName = "http.server.request.duration";
 
-    private const string OnStopEvent = "Microsoft.AspNetCore.Hosting.HttpRequestIn.Stop";
     private const string EventName = "OnStopActivity";
     private const string NetworkProtocolName = "http";
+
+    private static readonly object HttpContextItemsRouteTemplateKey = new();
 
     private readonly Meter meter;
     private readonly AspNetCoreMetricsInstrumentationOptions options;
@@ -65,23 +66,47 @@ internal sealed class HttpInMetricsListener : ListenerHandler
 
     public override void OnEventWritten(string name, object payload)
     {
-        if (name == OnStopEvent)
+        switch (name)
         {
-            if (this.emitOldAttributes)
+            case HttpInListener.OnStopEvent:
             {
-                this.OnEventWritten_Old(name, payload);
+                if (this.emitOldAttributes)
+                {
+                    this.OnEventWritten_Old(name, payload);
+                }
+
+                if (this.emitNewAttributes)
+                {
+                    this.OnEventWritten_New(name, payload);
+                }
+
+                break;
             }
 
-            if (this.emitNewAttributes)
+#if NETSTANDARD2_0_OR_GREATER || NETFRAMEWORK
+            case HttpInListener.OnMvcBeforeActionEvent:
             {
-                this.OnEventWritten_New(name, payload);
+                if (HttpInListener.TryGetRouteTemplate(
+                    payload,
+                    out var context,
+                    out var routeTemplate))
+                {
+                    context.Items[HttpContextItemsRouteTemplateKey] = routeTemplate;
+                }
+
+                break;
             }
+#endif
         }
     }
 
     public void OnEventWritten_Old(string name, object payload)
     {
-        var context = payload as HttpContext;
+#if NETSTANDARD2_0_OR_GREATER || NETFRAMEWORK
+        HttpInListener.StopContextFetcher.TryFetch(payload, out HttpContext context);
+#else
+        HttpContext context = payload as HttpContext;
+#endif
         if (context == null)
         {
             AspNetCoreInstrumentationEventSource.Log.NullPayload(nameof(HttpInMetricsListener), EventName, HttpServerDurationMetricName);
@@ -113,13 +138,15 @@ internal sealed class HttpInMetricsListener : ListenerHandler
             }
         }
 
-#if NET6_0_OR_GREATER
+#if NETSTANDARD2_0_OR_GREATER || NETFRAMEWORK
+        var route = context.Items[HttpContextItemsRouteTemplateKey] as string;
+#else
         var route = (context.GetEndpoint() as RouteEndpoint)?.RoutePattern.RawText;
+#endif
         if (!string.IsNullOrEmpty(route))
         {
             tags.Add(new KeyValuePair<string, object>(SemanticConventions.AttributeHttpRoute, route));
         }
-#endif
 
         // We are relying here on ASP.NET Core to set duration before writing the stop event.
         // https://github.com/dotnet/aspnetcore/blob/d6fa351048617ae1c8b47493ba1abbe94c3a24cf/src/Hosting/Hosting/src/Internal/HostingApplicationDiagnostics.cs#L449
@@ -129,7 +156,11 @@ internal sealed class HttpInMetricsListener : ListenerHandler
 
     public void OnEventWritten_New(string name, object payload)
     {
-        var context = payload as HttpContext;
+#if NETSTANDARD2_0_OR_GREATER || NETFRAMEWORK
+        HttpInListener.StopContextFetcher.TryFetch(payload, out HttpContext context);
+#else
+        HttpContext context = payload as HttpContext;
+#endif
         if (context == null)
         {
             AspNetCoreInstrumentationEventSource.Log.NullPayload(nameof(HttpInMetricsListener), EventName, HttpServerRequestDurationMetricName);
@@ -153,13 +184,15 @@ internal sealed class HttpInMetricsListener : ListenerHandler
         tags.Add(new KeyValuePair<string, object>(SemanticConventions.AttributeHttpRequestMethod, context.Request.Method));
         tags.Add(new KeyValuePair<string, object>(SemanticConventions.AttributeHttpResponseStatusCode, TelemetryHelper.GetBoxedStatusCode(context.Response.StatusCode)));
 
-#if NET6_0_OR_GREATER
+#if NETSTANDARD2_0_OR_GREATER || NETFRAMEWORK
+        var route = context.Items[HttpContextItemsRouteTemplateKey] as string;
+#else
         var route = (context.GetEndpoint() as RouteEndpoint)?.RoutePattern.RawText;
+#endif
         if (!string.IsNullOrEmpty(route))
         {
             tags.Add(new KeyValuePair<string, object>(SemanticConventions.AttributeHttpRoute, route));
         }
-#endif
 
         // We are relying here on ASP.NET Core to set duration before writing the stop event.
         // https://github.com/dotnet/aspnetcore/blob/d6fa351048617ae1c8b47493ba1abbe94c3a24cf/src/Hosting/Hosting/src/Internal/HostingApplicationDiagnostics.cs#L449

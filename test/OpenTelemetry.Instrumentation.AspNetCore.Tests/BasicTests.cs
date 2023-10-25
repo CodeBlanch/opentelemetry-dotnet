@@ -15,8 +15,10 @@
 // </copyright>
 
 using System.Diagnostics;
+#if NETFRAMEWORK
+using System.Net.Http;
+#endif
 using System.Text.Json;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -749,7 +751,7 @@ public sealed class BasicTests
             .WithWebHostBuilder(builder =>
             {
                 builder.ConfigureTestServices(
-                (s) => this.ConfigureExceptionFilters(s, mode, ref exportedItems));
+                    (s) => this.ConfigureExceptionFilters(s, mode, ref exportedItems));
                 builder.ConfigureLogging(loggingBuilder => loggingBuilder.ClearProviders());
             })
             .CreateClient())
@@ -962,27 +964,12 @@ public sealed class BasicTests
                 })
                 .Build();
 
-        var builder = WebApplication.CreateBuilder();
-        builder.Logging.ClearProviders();
-        var app = builder.Build();
-
-        app.UseExceptionHandler(handler =>
-        {
-            handler.Run(async (ctx) =>
+        var app = new TestWebHostHelper(
+            routes: new (string, RequestDelegate Handler)[]
             {
-                await ctx.Response.WriteAsync("handled").ConfigureAwait(false);
-            });
-        });
-
-        app.Map("/error", ThrowException);
-
-        static void ThrowException(IApplicationBuilder app)
-        {
-            app.Run(context =>
-            {
-                throw new Exception("CustomException");
-            });
-        }
+                ("/error", context => throw new Exception("CustomException")),
+            },
+            exceptionHandler: context => context.Response.WriteAsync("handled"));
 
         _ = app.RunAsync();
 
@@ -1000,7 +987,7 @@ public sealed class BasicTests
         Assert.Equal(0, numberOfUnSubscribedEvents);
         Assert.Equal(2, numberofSubscribedEvents);
 
-        await app.DisposeAsync().ConfigureAwait(false);
+        app.Dispose();
     }
 
     [Fact]
@@ -1014,11 +1001,11 @@ public sealed class BasicTests
             .AddInMemoryExporter(exportedItems)
             .Build();
 
-        var builder = WebApplication.CreateBuilder();
-        builder.Logging.ClearProviders();
-        var app = builder.Build();
-
-        app.MapGet("/custom/{name:alpha}", () => "Hello");
+        var app = new TestWebHostHelper(
+            routes: new (string, RequestDelegate Handler)[]
+            {
+                ("/custom/{name:alpha}", context => context.Response.WriteAsync("Hello")),
+            });
 
         _ = app.RunAsync();
 
@@ -1051,7 +1038,7 @@ public sealed class BasicTests
         // After fix this should be /custom/{name:alpha}
         Assert.Equal("/custom/abc", activity.DisplayName);
 
-        await app.DisposeAsync().ConfigureAwait(false);
+        app.Dispose();
     }
 
     public void Dispose()
