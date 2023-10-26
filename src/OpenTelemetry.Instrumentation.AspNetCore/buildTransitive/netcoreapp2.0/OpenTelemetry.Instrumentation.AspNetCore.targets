@@ -1,0 +1,6 @@
+<Project InitialTargets="NETStandardCompatError_OpenTelemetry_Instrumentation_AspNetCore_netcoreapp2_0">
+  <Target Name="NETStandardCompatError_OpenTelemetry_Instrumentation_AspNetCore_netcoreapp2_0"
+          Condition="'$(SuppressOTelAspNetCoreSupportBuildWarnings)' == ''">
+    <Warning Text="OpenTelemetry.Instrumentation.AspNetCore doesn't support $(TargetFramework) and has not been tested with it. Consider upgrading your TargetFramework to net6.0 or later. You may also set &lt;SuppressOTelAspNetCoreSupportBuildWarnings&gt;true&lt;/SuppressOTelAspNetCoreSupportBuildWarnings&gt; in the project file to ignore this warning and attempt to run in this unsupported configuration at your own risk." />
+  </Target>
+</Project>
