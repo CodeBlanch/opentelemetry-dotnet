@@ -17,8 +17,7 @@ namespace OpenTelemetry;
 /// </remarks>
 public readonly struct Baggage : IEquatable<Baggage>
 {
-    private static readonly RuntimeContextSlot<Dictionary<string, string>> RuntimeContextSlot
-        = RuntimeContext.RegisterSlot<Dictionary<string, string>>("otel.baggage");
+    private static readonly RuntimeContextSlot<BaggageHolder> RuntimeContextSlot = RuntimeContext.RegisterSlot<BaggageHolder>("otel.baggage");
 
     private static readonly Dictionary<string, string> EmptyBaggage = [];
 
@@ -65,8 +64,8 @@ public readonly struct Baggage : IEquatable<Baggage>
     /// </remarks>
     public static Baggage Current
     {
-        get => new(RuntimeContextSlot.Get() ?? EmptyBaggage);
-        set => RuntimeContextSlot.Set(value.baggage ?? EmptyBaggage);
+        get => RuntimeContextSlot.Get()?.Baggage ?? default;
+        set => RuntimeContextSlot.Set(new BaggageHolder { Baggage = value });
     }
 
     /// <summary>
@@ -119,6 +118,20 @@ public readonly struct Baggage : IEquatable<Baggage>
         }
 
         return new Baggage(baggageCopy);
+    }
+
+    public static void MutateCurrentBaggage(Func<Baggage, Baggage> modifyFunc)
+    {
+        Guard.ThrowIfNull(modifyFunc);
+
+        var baggageHolder = RuntimeContextSlot.Get();
+        if (baggageHolder == null)
+        {
+            baggageHolder = new BaggageHolder();
+            RuntimeContextSlot.Set(baggageHolder);
+        }
+
+        baggageHolder.Baggage = modifyFunc(baggageHolder.Baggage);
     }
 
     /// <summary>
@@ -352,5 +365,10 @@ public readonly struct Baggage : IEquatable<Baggage>
         }
 
         return hash;
+    }
+
+    private sealed class BaggageHolder
+    {
+        public Baggage Baggage;
     }
 }
