@@ -294,31 +294,45 @@ public class BaggageTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task AsyncAwaitFlowTest(bool yield)
+    [InlineData(false, BaggageFlowBehavior.Fork)]
+    [InlineData(true, BaggageFlowBehavior.Fork)]
+    [InlineData(false, BaggageFlowBehavior.ModifyCurrent)]
+    [InlineData(true, BaggageFlowBehavior.ModifyCurrent)]
+    public async Task AsyncAwaitFlowTest(bool yield, BaggageFlowBehavior flowBehavior)
     {
         Baggage.SetBaggage("key1", "value1");
 
-        await InnerTask(yield);
+        await InnerTask(yield, flowBehavior);
 
         Baggage.SetBaggage("key4", "value4");
 
-        // Note: Changes from the InnerTask are NOT observed
-        Assert.Equal(2, Baggage.Current.Count);
-        Assert.Equal("value1", Baggage.GetBaggage("key1"));
-        Assert.Equal("value4", Baggage.GetBaggage("key4"));
-
-        static async Task InnerTask(bool yield)
+        if (flowBehavior == BaggageFlowBehavior.Fork)
         {
-            Baggage.SetBaggage("key2", "value2");
+            // Note: Changes from the InnerTask are NOT observed
+            Assert.Equal(2, Baggage.Current.Count);
+            Assert.Equal("value1", Baggage.GetBaggage("key1"));
+            Assert.Equal("value4", Baggage.GetBaggage("key4"));
+        }
+        else
+        {
+            // Note: Changes from the InnerTask are observed
+            Assert.Equal(4, Baggage.Current.Count);
+            Assert.Equal("value1", Baggage.GetBaggage("key1"));
+            Assert.Equal("value2", Baggage.GetBaggage("key2"));
+            Assert.Equal("value3", Baggage.GetBaggage("key3"));
+            Assert.Equal("value4", Baggage.GetBaggage("key4"));
+        }
+
+        static async Task InnerTask(bool yield, BaggageFlowBehavior flowBehavior)
+        {
+            Baggage.SetBaggage("key2", "value2", flowBehavior: flowBehavior);
 
             if (yield)
             {
                 await Task.Yield();
             }
 
-            Baggage.SetBaggage("key3", "value3");
+            Baggage.SetBaggage("key3", "value3", flowBehavior: flowBehavior);
 
             Assert.Equal(3, Baggage.Current.Count);
             Assert.Equal("value1", Baggage.GetBaggage("key1"));

@@ -9,6 +9,12 @@ using OpenTelemetry.Internal;
 
 namespace OpenTelemetry;
 
+public enum BaggageFlowBehavior
+{
+    Fork,
+    ModifyCurrent,
+}
+
 /// <summary>
 /// Baggage implementation.
 /// </summary>
@@ -17,8 +23,7 @@ namespace OpenTelemetry;
 /// </remarks>
 public readonly struct Baggage : IEquatable<Baggage>
 {
-    private static readonly RuntimeContextSlot<Dictionary<string, string>> RuntimeContextSlot
-        = RuntimeContext.RegisterSlot<Dictionary<string, string>>("otel.baggage");
+    private static readonly RuntimeContextSlot<BaggageHolder> RuntimeContextSlot = RuntimeContext.RegisterSlot<BaggageHolder>("otel.baggage");
 
     private static readonly Dictionary<string, string> EmptyBaggage = [];
 
@@ -65,8 +70,8 @@ public readonly struct Baggage : IEquatable<Baggage>
     /// </remarks>
     public static Baggage Current
     {
-        get => new(RuntimeContextSlot.Get() ?? EmptyBaggage);
-        set => RuntimeContextSlot.Set(value.baggage ?? EmptyBaggage);
+        get => RuntimeContextSlot.Get()?.Baggage ?? default;
+        set => EnsureBaggageHolder(out _).Baggage = value;
     }
 
     /// <summary>
@@ -154,11 +159,28 @@ public readonly struct Baggage : IEquatable<Baggage>
     /// <param name="baggage">Optional <see cref="Baggage"/>. <see cref="Current"/> is used if not specified.</param>
     /// <returns>New <see cref="Baggage"/> containing the key/value pair.</returns>
     /// <remarks>Note: The <see cref="Baggage"/> returned will be set as the new <see cref="Current"/> instance.</remarks>
-    public static Baggage SetBaggage(string name, string? value, Baggage baggage = default)
+    public static Baggage SetBaggage(string name, string? value, Baggage baggage = default, BaggageFlowBehavior flowBehavior = BaggageFlowBehavior.Fork)
     {
-        return Current = baggage == default
-            ? Current.SetBaggage(name, value)
+        var container = EnsureBaggageHolder(out var created);
+
+        var newBaggage = baggage == default
+            ? container.Baggage.SetBaggage(name, value)
             : baggage.SetBaggage(name, value);
+
+        if (flowBehavior == BaggageFlowBehavior.ModifyCurrent || created)
+        {
+            container.Baggage = newBaggage;
+        }
+        else
+        {
+            RuntimeContextSlot.Set(
+                new BaggageHolder
+                {
+                    Baggage = newBaggage,
+                });
+        }
+
+        return newBaggage;
     }
 
     /// <summary>
@@ -352,5 +374,28 @@ public readonly struct Baggage : IEquatable<Baggage>
         }
 
         return hash;
+    }
+
+    private static BaggageHolder EnsureBaggageHolder(out bool created)
+    {
+        var baggageHolder = RuntimeContextSlot.Get();
+
+        if (baggageHolder == null)
+        {
+            baggageHolder = new BaggageHolder();
+            RuntimeContextSlot.Set(baggageHolder);
+            created = true;
+        }
+        else
+        {
+            created = false;
+        }
+
+        return baggageHolder;
+    }
+
+    private sealed class BaggageHolder
+    {
+        public Baggage Baggage;
     }
 }
