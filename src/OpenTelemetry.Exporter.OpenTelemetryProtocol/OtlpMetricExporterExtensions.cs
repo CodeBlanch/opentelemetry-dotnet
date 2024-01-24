@@ -76,31 +76,39 @@ public static class OtlpMetricExporterExtensions
 
         return builder.AddReader(sp =>
         {
-            OtlpExporterOptions exporterOptions;
-
-            if (name == null)
+            OtlpExporterOptions.CurrentSignalType = OtlpExporterOptions.SignalType.Metrics;
+            try
             {
-                // If we are NOT using named options we create a new
-                // instance always. The reason for this is
-                // OtlpExporterOptions is shared by all signals. Without a
-                // name, delegates for all signals will mix together. See:
-                // https://github.com/open-telemetry/opentelemetry-dotnet/issues/4043
-                exporterOptions = sp.GetRequiredService<IOptionsFactory<OtlpExporterOptions>>().Create(finalOptionsName);
+                OtlpExporterOptions exporterOptions;
 
-                // Configuration delegate is executed inline on the fresh instance.
-                configure?.Invoke(exporterOptions);
+                if (name == null)
+                {
+                    // If we are NOT using named options we create a new
+                    // instance always. The reason for this is
+                    // OtlpExporterOptions is shared by all signals. Without a
+                    // name, delegates for all signals will mix together. See:
+                    // https://github.com/open-telemetry/opentelemetry-dotnet/issues/4043
+                    exporterOptions = sp.GetRequiredService<IOptionsFactory<OtlpExporterOptions>>().Create(finalOptionsName);
+
+                    // Configuration delegate is executed inline on the fresh instance.
+                    configure?.Invoke(exporterOptions);
+                }
+                else
+                {
+                    // When using named options we can properly utilize Options
+                    // API to create or reuse an instance.
+                    exporterOptions = sp.GetRequiredService<IOptionsMonitor<OtlpExporterOptions>>().Get(finalOptionsName);
+                }
+
+                return BuildOtlpExporterMetricReader(
+                    exporterOptions,
+                    sp.GetRequiredService<IOptionsMonitor<MetricReaderOptions>>().Get(finalOptionsName),
+                    sp);
             }
-            else
+            finally
             {
-                // When using named options we can properly utilize Options
-                // API to create or reuse an instance.
-                exporterOptions = sp.GetRequiredService<IOptionsMonitor<OtlpExporterOptions>>().Get(finalOptionsName);
+                OtlpExporterOptions.CurrentSignalType = OtlpExporterOptions.SignalType.Unknown;
             }
-
-            return BuildOtlpExporterMetricReader(
-                exporterOptions,
-                sp.GetRequiredService<IOptionsMonitor<MetricReaderOptions>>().Get(finalOptionsName),
-                sp);
         });
     }
 
@@ -153,25 +161,33 @@ public static class OtlpMetricExporterExtensions
 
         return builder.AddReader(sp =>
         {
-            OtlpExporterOptions exporterOptions;
-            if (name == null)
+            OtlpExporterOptions.CurrentSignalType = OtlpExporterOptions.SignalType.Metrics;
+            try
             {
-                // If we are NOT using named options we create a new
-                // instance always. The reason for this is
-                // OtlpExporterOptions is shared by all signals. Without a
-                // name, delegates for all signals will mix together.
-                exporterOptions = sp.GetRequiredService<IOptionsFactory<OtlpExporterOptions>>().Create(finalOptionsName);
+                OtlpExporterOptions exporterOptions;
+                if (name == null)
+                {
+                    // If we are NOT using named options we create a new
+                    // instance always. The reason for this is
+                    // OtlpExporterOptions is shared by all signals. Without a
+                    // name, delegates for all signals will mix together.
+                    exporterOptions = sp.GetRequiredService<IOptionsFactory<OtlpExporterOptions>>().Create(finalOptionsName);
+                }
+                else
+                {
+                    exporterOptions = sp.GetRequiredService<IOptionsMonitor<OtlpExporterOptions>>().Get(finalOptionsName);
+                }
+
+                var metricReaderOptions = sp.GetRequiredService<IOptionsMonitor<MetricReaderOptions>>().Get(finalOptionsName);
+
+                configureExporterAndMetricReader?.Invoke(exporterOptions, metricReaderOptions);
+
+                return BuildOtlpExporterMetricReader(exporterOptions, metricReaderOptions, sp);
             }
-            else
+            finally
             {
-                exporterOptions = sp.GetRequiredService<IOptionsMonitor<OtlpExporterOptions>>().Get(finalOptionsName);
+                OtlpExporterOptions.CurrentSignalType = OtlpExporterOptions.SignalType.Unknown;
             }
-
-            var metricReaderOptions = sp.GetRequiredService<IOptionsMonitor<MetricReaderOptions>>().Get(finalOptionsName);
-
-            configureExporterAndMetricReader?.Invoke(exporterOptions, metricReaderOptions);
-
-            return BuildOtlpExporterMetricReader(exporterOptions, metricReaderOptions, sp);
         });
     }
 

@@ -65,34 +65,42 @@ public static class OtlpTraceExporterHelperExtensions
 
         return builder.AddProcessor(sp =>
         {
-            OtlpExporterOptions exporterOptions;
-
-            if (name == null)
+            OtlpExporterOptions.CurrentSignalType = OtlpExporterOptions.SignalType.Traces;
+            try
             {
-                // If we are NOT using named options we create a new
-                // instance always. The reason for this is
-                // OtlpExporterOptions is shared by all signals. Without a
-                // name, delegates for all signals will mix together. See:
-                // https://github.com/open-telemetry/opentelemetry-dotnet/issues/4043
-                exporterOptions = sp.GetRequiredService<IOptionsFactory<OtlpExporterOptions>>().Create(finalOptionsName);
+                OtlpExporterOptions exporterOptions;
 
-                // Configuration delegate is executed inline on the fresh instance.
-                configure?.Invoke(exporterOptions);
+                if (name == null)
+                {
+                    // If we are NOT using named options we create a new
+                    // instance always. The reason for this is
+                    // OtlpExporterOptions is shared by all signals. Without a
+                    // name, delegates for all signals will mix together. See:
+                    // https://github.com/open-telemetry/opentelemetry-dotnet/issues/4043
+                    exporterOptions = sp.GetRequiredService<IOptionsFactory<OtlpExporterOptions>>().Create(finalOptionsName);
+
+                    // Configuration delegate is executed inline on the fresh instance.
+                    configure?.Invoke(exporterOptions);
+                }
+                else
+                {
+                    // When using named options we can properly utilize Options
+                    // API to create or reuse an instance.
+                    exporterOptions = sp.GetRequiredService<IOptionsMonitor<OtlpExporterOptions>>().Get(finalOptionsName);
+                }
+
+                // Note: Not using finalOptionsName here for SdkLimitOptions.
+                // There should only be one provider for a given service
+                // collection so SdkLimitOptions is treated as a single default
+                // instance.
+                var sdkOptionsManager = sp.GetRequiredService<IOptionsMonitor<SdkLimitOptions>>().CurrentValue;
+
+                return BuildOtlpExporterProcessor(exporterOptions, sdkOptionsManager, sp);
             }
-            else
+            finally
             {
-                // When using named options we can properly utilize Options
-                // API to create or reuse an instance.
-                exporterOptions = sp.GetRequiredService<IOptionsMonitor<OtlpExporterOptions>>().Get(finalOptionsName);
+                OtlpExporterOptions.CurrentSignalType = OtlpExporterOptions.SignalType.Unknown;
             }
-
-            // Note: Not using finalOptionsName here for SdkLimitOptions.
-            // There should only be one provider for a given service
-            // collection so SdkLimitOptions is treated as a single default
-            // instance.
-            var sdkOptionsManager = sp.GetRequiredService<IOptionsMonitor<SdkLimitOptions>>().CurrentValue;
-
-            return BuildOtlpExporterProcessor(exporterOptions, sdkOptionsManager, sp);
         });
     }
 

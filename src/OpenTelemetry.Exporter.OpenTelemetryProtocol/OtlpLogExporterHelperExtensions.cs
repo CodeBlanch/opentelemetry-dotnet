@@ -60,18 +60,26 @@ public static class OtlpLogExporterHelperExtensions
 
         return loggerOptions.AddProcessor(sp =>
         {
-            var exporterOptions = GetOptions<OtlpExporterOptions>(sp, name, finalOptionsName, OtlpExporterOptions.CreateOtlpExporterOptions);
+            OtlpExporterOptions.CurrentSignalType = OtlpExporterOptions.SignalType.Logs;
+            try
+            {
+                var exporterOptions = GetOptions<OtlpExporterOptions>(sp, name, finalOptionsName, OtlpExporterOptions.CreateOtlpExporterOptions);
 
-            var processorOptions = sp.GetRequiredService<IOptionsMonitor<LogRecordExportProcessorOptions>>().Get(finalOptionsName);
+                var processorOptions = sp.GetRequiredService<IOptionsMonitor<LogRecordExportProcessorOptions>>().Get(finalOptionsName);
 
-            configure?.Invoke(exporterOptions);
+                configure?.Invoke(exporterOptions);
 
-            return BuildOtlpLogExporter(
-                sp,
-                exporterOptions,
-                processorOptions,
-                GetOptions(sp, Options.DefaultName, Options.DefaultName, (sp, c, n) => new SdkLimitOptions(c)),
-                GetOptions(sp, name, finalOptionsName, (sp, c, n) => new ExperimentalOptions(c)));
+                return BuildOtlpLogExporter(
+                    sp,
+                    exporterOptions,
+                    processorOptions,
+                    GetOptions(sp, Options.DefaultName, Options.DefaultName, (sp, c, n) => new SdkLimitOptions(c)),
+                    GetOptions(sp, name, finalOptionsName, (sp, c, n) => new ExperimentalOptions(c)));
+            }
+            finally
+            {
+                OtlpExporterOptions.CurrentSignalType = OtlpExporterOptions.SignalType.Unknown;
+            }
         });
     }
 
@@ -104,18 +112,26 @@ public static class OtlpLogExporterHelperExtensions
 
         return loggerOptions.AddProcessor(sp =>
         {
-            var exporterOptions = GetOptions<OtlpExporterOptions>(sp, name, finalOptionsName, OtlpExporterOptions.CreateOtlpExporterOptions);
+            OtlpExporterOptions.CurrentSignalType = OtlpExporterOptions.SignalType.Logs;
+            try
+            {
+                var exporterOptions = GetOptions<OtlpExporterOptions>(sp, name, finalOptionsName, OtlpExporterOptions.CreateOtlpExporterOptions);
 
-            var processorOptions = sp.GetRequiredService<IOptionsMonitor<LogRecordExportProcessorOptions>>().Get(finalOptionsName);
+                var processorOptions = sp.GetRequiredService<IOptionsMonitor<LogRecordExportProcessorOptions>>().Get(finalOptionsName);
 
-            configureExporterAndProcessor?.Invoke(exporterOptions, processorOptions);
+                configureExporterAndProcessor?.Invoke(exporterOptions, processorOptions);
 
-            return BuildOtlpLogExporter(
-                sp,
-                exporterOptions,
-                processorOptions,
-                GetOptions(sp, Options.DefaultName, Options.DefaultName, (sp, c, n) => new SdkLimitOptions(c)),
-                GetOptions(sp, name, finalOptionsName, (sp, c, n) => new ExperimentalOptions(c)));
+                return BuildOtlpLogExporter(
+                    sp,
+                    exporterOptions,
+                    processorOptions,
+                    GetOptions(sp, Options.DefaultName, Options.DefaultName, (sp, c, n) => new SdkLimitOptions(c)),
+                    GetOptions(sp, name, finalOptionsName, (sp, c, n) => new ExperimentalOptions(c)));
+            }
+            finally
+            {
+                OtlpExporterOptions.CurrentSignalType = OtlpExporterOptions.SignalType.Unknown;
+            }
         });
     }
 
@@ -229,39 +245,47 @@ public static class OtlpLogExporterHelperExtensions
 
         return builder.AddProcessor(sp =>
         {
-            OtlpExporterOptions exporterOptions;
-
-            if (name == null)
+            OtlpExporterOptions.CurrentSignalType = OtlpExporterOptions.SignalType.Logs;
+            try
             {
-                // If we are NOT using named options we create a new
-                // instance always. The reason for this is
-                // OtlpExporterOptions is shared by all signals. Without a
-                // name, delegates for all signals will mix together. See:
-                // https://github.com/open-telemetry/opentelemetry-dotnet/issues/4043
-                exporterOptions = sp.GetRequiredService<IOptionsFactory<OtlpExporterOptions>>().Create(finalOptionsName);
+                OtlpExporterOptions exporterOptions;
 
-                // Configuration delegate is executed inline on the fresh instance.
-                configureExporter?.Invoke(exporterOptions);
+                if (name == null)
+                {
+                    // If we are NOT using named options we create a new
+                    // instance always. The reason for this is
+                    // OtlpExporterOptions is shared by all signals. Without a
+                    // name, delegates for all signals will mix together. See:
+                    // https://github.com/open-telemetry/opentelemetry-dotnet/issues/4043
+                    exporterOptions = sp.GetRequiredService<IOptionsFactory<OtlpExporterOptions>>().Create(finalOptionsName);
+
+                    // Configuration delegate is executed inline on the fresh instance.
+                    configureExporter?.Invoke(exporterOptions);
+                }
+                else
+                {
+                    // When using named options we can properly utilize Options
+                    // API to create or reuse an instance.
+                    exporterOptions = sp.GetRequiredService<IOptionsMonitor<OtlpExporterOptions>>().Get(finalOptionsName);
+                }
+
+                // Note: Not using finalOptionsName here for SdkLimitOptions.
+                // There should only be one provider for a given service
+                // collection so SdkLimitOptions is treated as a single default
+                // instance.
+                var sdkLimitOptions = sp.GetRequiredService<IOptionsMonitor<SdkLimitOptions>>().CurrentValue;
+
+                return BuildOtlpLogExporter(
+                    sp,
+                    exporterOptions,
+                    sp.GetRequiredService<IOptionsMonitor<LogRecordExportProcessorOptions>>().Get(finalOptionsName),
+                    sdkLimitOptions,
+                    sp.GetRequiredService<IOptionsMonitor<ExperimentalOptions>>().Get(finalOptionsName));
             }
-            else
+            finally
             {
-                // When using named options we can properly utilize Options
-                // API to create or reuse an instance.
-                exporterOptions = sp.GetRequiredService<IOptionsMonitor<OtlpExporterOptions>>().Get(finalOptionsName);
+                OtlpExporterOptions.CurrentSignalType = OtlpExporterOptions.SignalType.Unknown;
             }
-
-            // Note: Not using finalOptionsName here for SdkLimitOptions.
-            // There should only be one provider for a given service
-            // collection so SdkLimitOptions is treated as a single default
-            // instance.
-            var sdkLimitOptions = sp.GetRequiredService<IOptionsMonitor<SdkLimitOptions>>().CurrentValue;
-
-            return BuildOtlpLogExporter(
-                sp,
-                exporterOptions,
-                sp.GetRequiredService<IOptionsMonitor<LogRecordExportProcessorOptions>>().Get(finalOptionsName),
-                sdkLimitOptions,
-                sp.GetRequiredService<IOptionsMonitor<ExperimentalOptions>>().Get(finalOptionsName));
         });
     }
 
@@ -303,41 +327,49 @@ public static class OtlpLogExporterHelperExtensions
 
         return builder.AddProcessor(sp =>
         {
-            OtlpExporterOptions exporterOptions;
-
-            if (name == null)
+            OtlpExporterOptions.CurrentSignalType = OtlpExporterOptions.SignalType.Logs;
+            try
             {
-                // If we are NOT using named options we create a new
-                // instance always. The reason for this is
-                // OtlpExporterOptions is shared by all signals. Without a
-                // name, delegates for all signals will mix together. See:
-                // https://github.com/open-telemetry/opentelemetry-dotnet/issues/4043
-                exporterOptions = sp.GetRequiredService<IOptionsFactory<OtlpExporterOptions>>().Create(finalOptionsName);
+                OtlpExporterOptions exporterOptions;
+
+                if (name == null)
+                {
+                    // If we are NOT using named options we create a new
+                    // instance always. The reason for this is
+                    // OtlpExporterOptions is shared by all signals. Without a
+                    // name, delegates for all signals will mix together. See:
+                    // https://github.com/open-telemetry/opentelemetry-dotnet/issues/4043
+                    exporterOptions = sp.GetRequiredService<IOptionsFactory<OtlpExporterOptions>>().Create(finalOptionsName);
+                }
+                else
+                {
+                    // When using named options we can properly utilize Options
+                    // API to create or reuse an instance.
+                    exporterOptions = sp.GetRequiredService<IOptionsMonitor<OtlpExporterOptions>>().Get(finalOptionsName);
+                }
+
+                var processorOptions = sp.GetRequiredService<IOptionsMonitor<LogRecordExportProcessorOptions>>().Get(finalOptionsName);
+
+                // Configuration delegate is executed inline.
+                configureExporterAndProcessor?.Invoke(exporterOptions, processorOptions);
+
+                // Note: Not using finalOptionsName here for SdkLimitOptions.
+                // There should only be one provider for a given service
+                // collection so SdkLimitOptions is treated as a single default
+                // instance.
+                var sdkLimitOptions = sp.GetRequiredService<IOptionsMonitor<SdkLimitOptions>>().CurrentValue;
+
+                return BuildOtlpLogExporter(
+                    sp,
+                    exporterOptions,
+                    processorOptions,
+                    sdkLimitOptions,
+                    sp.GetRequiredService<IOptionsMonitor<ExperimentalOptions>>().Get(finalOptionsName));
             }
-            else
+            finally
             {
-                // When using named options we can properly utilize Options
-                // API to create or reuse an instance.
-                exporterOptions = sp.GetRequiredService<IOptionsMonitor<OtlpExporterOptions>>().Get(finalOptionsName);
+                OtlpExporterOptions.CurrentSignalType = OtlpExporterOptions.SignalType.Unknown;
             }
-
-            var processorOptions = sp.GetRequiredService<IOptionsMonitor<LogRecordExportProcessorOptions>>().Get(finalOptionsName);
-
-            // Configuration delegate is executed inline.
-            configureExporterAndProcessor?.Invoke(exporterOptions, processorOptions);
-
-            // Note: Not using finalOptionsName here for SdkLimitOptions.
-            // There should only be one provider for a given service
-            // collection so SdkLimitOptions is treated as a single default
-            // instance.
-            var sdkLimitOptions = sp.GetRequiredService<IOptionsMonitor<SdkLimitOptions>>().CurrentValue;
-
-            return BuildOtlpLogExporter(
-                sp,
-                exporterOptions,
-                processorOptions,
-                sdkLimitOptions,
-                sp.GetRequiredService<IOptionsMonitor<ExperimentalOptions>>().Get(finalOptionsName));
         });
     }
 

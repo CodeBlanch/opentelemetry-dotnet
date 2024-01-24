@@ -22,6 +22,9 @@ namespace OpenTelemetry.Exporter;
 /// </summary>
 public class OtlpExporterOptions
 {
+    internal const string LogEndpointEnvVarName = "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT";
+    internal const string MetricEndpointEnvVarName = "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT";
+    internal const string TraceEndpointEnvVarName = "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT";
     internal const string EndpointEnvVarName = "OTEL_EXPORTER_OTLP_ENDPOINT";
     internal const string HeadersEnvVarName = "OTEL_EXPORTER_OTLP_HEADERS";
     internal const string TimeoutEnvVarName = "OTEL_EXPORTER_OTLP_TIMEOUT";
@@ -39,24 +42,28 @@ public class OtlpExporterOptions
     private const OtlpExportProtocol DefaultOtlpExportProtocol = OtlpExportProtocol.Grpc;
     private const string UserAgentProduct = "OTel-OTLP-Exporter-Dotnet";
 
+    private static readonly AsyncLocal<SignalType> CurrentSignalTypeStorage = new();
+
     private Uri endpoint;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="OtlpExporterOptions"/> class.
     /// </summary>
     public OtlpExporterOptions()
-        : this(new ConfigurationBuilder().AddEnvironmentVariables().Build(), new())
+        : this(SignalType.Unknown, new ConfigurationBuilder().AddEnvironmentVariables().Build(), new())
     {
     }
 
     internal OtlpExporterOptions(
+        SignalType signalType,
         IConfiguration configuration,
         BatchExportActivityProcessorOptions defaultBatchOptions)
     {
         Debug.Assert(configuration != null, "configuration was null");
         Debug.Assert(defaultBatchOptions != null, "defaultBatchOptions was null");
 
-        if (configuration.TryGetUriValue(EndpointEnvVarName, out var endpoint))
+        if ((TryGetSignalSpecificEndpointEnvVarName(signalType, out var signalSpecificEnvVarName) && configuration.TryGetUriValue(signalSpecificEnvVarName, out var endpoint))
+            || configuration.TryGetUriValue(EndpointEnvVarName, out endpoint))
         {
             this.endpoint = endpoint;
         }
@@ -88,6 +95,14 @@ public class OtlpExporterOptions
         };
 
         this.BatchExportProcessorOptions = defaultBatchOptions;
+    }
+
+    internal enum SignalType
+    {
+        Unknown,
+        Traces,
+        Metrics,
+        Logs
     }
 
     /// <summary>
@@ -179,6 +194,12 @@ public class OtlpExporterOptions
     /// </remarks>
     public Func<HttpClient> HttpClientFactory { get; set; }
 
+    internal static SignalType CurrentSignalType
+    {
+        get => CurrentSignalTypeStorage.Value;
+        set => CurrentSignalTypeStorage.Value = value;
+    }
+
     /// <summary>
     /// Gets a value indicating whether <see cref="Endpoint" /> was modified via its setter.
     /// </summary>
@@ -194,8 +215,28 @@ public class OtlpExporterOptions
         IConfiguration configuration,
         string name)
         => new(
+            CurrentSignalType,
             configuration,
             serviceProvider.GetRequiredService<IOptionsMonitor<BatchExportActivityProcessorOptions>>().Get(name));
+
+    private static bool TryGetSignalSpecificEndpointEnvVarName(SignalType signalType, out string envVarName)
+    {
+        switch (signalType)
+        {
+            case SignalType.Logs:
+                envVarName = LogEndpointEnvVarName;
+                return true;
+            case SignalType.Metrics:
+                envVarName = MetricEndpointEnvVarName;
+                return true;
+            case SignalType.Traces:
+                envVarName = TraceEndpointEnvVarName;
+                return true;
+            default:
+                envVarName = null;
+                return false;
+        }
+    }
 
     private static string GetUserAgentString()
     {
