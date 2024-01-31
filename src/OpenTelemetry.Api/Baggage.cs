@@ -15,7 +15,8 @@ namespace OpenTelemetry;
 /// </remarks>
 public readonly struct Baggage : IEquatable<Baggage>
 {
-    private static readonly RuntimeContextSlot<BaggageHolder> RuntimeContextSlot = RuntimeContext.RegisterSlot<BaggageHolder>("otel.baggage");
+    internal const string RuntimeContextSlotKey = "otel.baggage";
+    private static readonly RuntimeContextSlot<BaggageHolder> RuntimeContextSlot = RuntimeContext.RegisterSlot<BaggageHolder>(RuntimeContextSlotKey);
     private static readonly Dictionary<string, string> EmptyBaggage = new();
 
     private readonly Dictionary<string, string> baggage;
@@ -362,7 +363,7 @@ public readonly struct Baggage : IEquatable<Baggage>
         return baggageHolder;
     }
 
-    private sealed class BaggageHolder
+    internal sealed class BaggageHolder
     {
         public Baggage Baggage;
     }

@@ -7,12 +7,70 @@ using OpenTelemetry.Internal;
 
 namespace OpenTelemetry.Context;
 
+#nullable enable
+
+public readonly struct RuntimeContextValues
+{
+    internal readonly Dictionary<string, object?>? Values;
+
+    internal RuntimeContextValues(Dictionary<string, object?> values)
+    {
+        this.Values = values;
+    }
+}
+
+public static class RuntimeContextValuesExtensions
+{
+    public static Baggage GetBaggage(this RuntimeContextValues runtimeContextValues)
+    {
+        var values = runtimeContextValues.Values;
+        if (values != null
+            && values.TryGetValue(Baggage.RuntimeContextSlotKey, out var baggageValue)
+            && baggageValue is Baggage.BaggageHolder baggageHolder)
+        {
+            return baggageHolder.Baggage;
+        }
+
+        return default;
+    }
+
+    public static RuntimeContextValues SetBaggage(this RuntimeContextValues runtimeContextValues, Baggage baggage)
+    {
+        var currentValues = runtimeContextValues.Values;
+
+        var newValues = currentValues == null
+            ? new Dictionary<string, object?>()
+            : new Dictionary<string, object?>(currentValues);
+
+        newValues[Baggage.RuntimeContextSlotKey] = baggage;
+
+        return new(newValues);
+    }
+}
+
+internal sealed class RuntimeContextScope : IDisposable
+{
+    private readonly RuntimeContextValues previousValues;
+
+    public RuntimeContextScope(RuntimeContextValues previousValues)
+    {
+        this.previousValues = previousValues;
+    }
+
+    public void Dispose()
+    {
+        RuntimeContext.SetValues(this.previousValues);
+    }
+}
+
+#nullable disable
+
 /// <summary>
 /// Generic runtime context management API.
 /// </summary>
 public static class RuntimeContext
 {
-    private static readonly ConcurrentDictionary<string, object> Slots = new();
+    private static readonly ConcurrentDictionary<string, IRuntimeContextSlot> Slots = new();
 
     private static Type contextSlotType = typeof(AsyncLocalRuntimeContextSlot<>);
 
@@ -100,29 +158,28 @@ public static class RuntimeContext
         return contextSlot;
     }
 
-    /*
-    public static void Apply(IDictionary<string, object> snapshot)
+#nullable enable
+    public static RuntimeContextValues GetValues()
     {
-        foreach (var entry in snapshot)
+        Dictionary<string, object?> values = new(Slots.Count);
+
+        foreach (var slot in Slots)
         {
-            // TODO: revisit this part if we want Snapshot() to be used on critical paths
-            dynamic value = entry.Value;
-            SetValue(entry.Key, value);
+            values.Add(slot.Key, slot.Value.Get());
         }
+
+        return new(values);
     }
 
-    public static IDictionary<string, object> Snapshot()
+    public static IDisposable Attach(RuntimeContextValues runtimeContextValues)
     {
-        var retval = new Dictionary<string, object>();
-        foreach (var entry in Slots)
-        {
-            // TODO: revisit this part if we want Snapshot() to be used on critical paths
-            dynamic slot = entry.Value;
-            retval[entry.Key] = slot.Get();
-        }
-        return retval;
+        var current = GetValues();
+
+        SetValues(runtimeContextValues);
+
+        return new RuntimeContextScope(current);
     }
-    */
+#nullable disable
 
     /// <summary>
     /// Sets the value to a registered slot.
@@ -178,6 +235,23 @@ public static class RuntimeContext
     internal static void Clear()
     {
         Slots.Clear();
+    }
+
+    internal static void SetValues(RuntimeContextValues runtimeContextValues)
+    {
+        var newValues = runtimeContextValues.Values;
+
+        foreach (var kvp in Slots)
+        {
+            if (newValues.TryGetValue(kvp.Key, out var newValue))
+            {
+                kvp.Value.Set(newValue);
+            }
+            else
+            {
+                kvp.Value.Set(null);
+            }
+        }
     }
 
     private static object GuardNotFound(string slotName)
