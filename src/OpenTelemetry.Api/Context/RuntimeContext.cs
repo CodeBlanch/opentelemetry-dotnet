@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using OpenTelemetry.Internal;
 
@@ -21,9 +22,9 @@ public readonly struct RuntimeContextValues
 
 public static class RuntimeContextValuesExtensions
 {
-    public static Baggage GetBaggage(this RuntimeContextValues runtimeContextValues)
+    public static Baggage GetBaggage(this RuntimeContextValues context)
     {
-        var values = runtimeContextValues.Values;
+        var values = context.Values;
         if (values != null
             && values.TryGetValue(Baggage.RuntimeContextSlotKey, out var baggageValue)
             && baggageValue is Baggage.BaggageHolder baggageHolder)
@@ -34,15 +35,65 @@ public static class RuntimeContextValuesExtensions
         return default;
     }
 
-    public static RuntimeContextValues SetBaggage(this RuntimeContextValues runtimeContextValues, Baggage baggage)
+    public static RuntimeContextValues SetBaggage(this RuntimeContextValues context, Baggage baggage)
     {
-        var currentValues = runtimeContextValues.Values;
+        var currentValues = context.Values;
 
         var newValues = currentValues == null
             ? new Dictionary<string, object?>()
             : new Dictionary<string, object?>(currentValues);
 
         newValues[Baggage.RuntimeContextSlotKey] = baggage;
+
+        return new(newValues);
+    }
+
+    public static ActivityContext GetActivityContext(this RuntimeContextValues context)
+    {
+        var values = context.Values;
+        if (values != null
+            && values.TryGetValue(RuntimeContext.RuntimeContextValuesActivityKey, out var activityValue)
+            && activityValue is Activity activity)
+        {
+            return activity.Context;
+        }
+
+        return default;
+    }
+
+    public static RuntimeContextValues SetActivityContext(this RuntimeContextValues context, ActivityContext activityContext)
+    {
+        var currentValues = context.Values;
+
+        var newValues = currentValues == null
+            ? new Dictionary<string, object?>()
+            : new Dictionary<string, object?>(currentValues);
+
+        if (activityContext == default)
+        {
+            newValues[RuntimeContext.RuntimeContextValuesActivityKey] = null;
+        }
+        else
+        {
+            var activity = new Activity(string.Empty);
+
+            typeof(Activity)
+                .GetField("_traceId", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                .SetValue(activity, activityContext.TraceId.ToHexString());
+
+            typeof(Activity)
+                .GetField("_spanId", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                .SetValue(activity, activityContext.SpanId.ToHexString());
+
+            activity.ActivityTraceFlags = activityContext.TraceFlags;
+
+            activity.TraceStateString = activityContext.TraceState;
+
+            // Note: Remote information will be lost. Any Activity created under
+            // this context will think it has a local parent.
+
+            newValues[RuntimeContext.RuntimeContextValuesActivityKey] = activity;
+        }
 
         return new(newValues);
     }
@@ -70,6 +121,8 @@ internal sealed class RuntimeContextScope : IDisposable
 /// </summary>
 public static class RuntimeContext
 {
+    internal const string RuntimeContextValuesActivityKey = "otel.activity";
+
     private static readonly ConcurrentDictionary<string, IRuntimeContextSlot> Slots = new();
 
     private static Type contextSlotType = typeof(AsyncLocalRuntimeContextSlot<>);
@@ -161,12 +214,14 @@ public static class RuntimeContext
 #nullable enable
     public static RuntimeContextValues GetValues()
     {
-        Dictionary<string, object?> values = new(Slots.Count);
+        Dictionary<string, object?> values = new(Slots.Count + 1);
 
         foreach (var slot in Slots)
         {
             values.Add(slot.Key, slot.Value.Get());
         }
+
+        values[RuntimeContextValuesActivityKey] = Activity.Current;
 
         return new(values);
     }
@@ -251,6 +306,16 @@ public static class RuntimeContext
             {
                 kvp.Value.Set(null);
             }
+        }
+
+        if (newValues.TryGetValue(RuntimeContextValuesActivityKey, out var activityValue)
+            && activityValue is Activity activity)
+        {
+            Activity.Current = activity;
+        }
+        else
+        {
+            Activity.Current = null;
         }
     }
 
