@@ -27,7 +27,9 @@ public class BaseExportingMetricReader : MetricReader
     /// Initializes a new instance of the <see cref="BaseExportingMetricReader"/> class.
     /// </summary>
     /// <param name="exporter">Exporter instance to export Metrics to.</param>
-    public BaseExportingMetricReader(BaseExporter<Metric> exporter)
+    /// <param name="options">Optional <see cref="MetricReaderOptions"/>.</param>
+    public BaseExportingMetricReader(BaseExporter<Metric> exporter, MetricReaderOptions? options)
+        : base(options)
     {
         Guard.ThrowIfNull(exporter);
 
@@ -62,6 +64,15 @@ public class BaseExportingMetricReader : MetricReader
         this.exportCalledMessage = $"{nameof(BaseExportingMetricReader)} calling {this.Exporter}.{nameof(this.Exporter.Export)} method.";
         this.exportSucceededMessage = $"{this.Exporter}.{nameof(this.Exporter.Export)} succeeded.";
         this.exportFailedMessage = $"{this.Exporter}.{nameof(this.Exporter.Export)} failed.";
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="BaseExportingMetricReader"/> class.
+    /// </summary>
+    /// <param name="exporter">Exporter instance to export Metrics to.</param>
+    public BaseExportingMetricReader(BaseExporter<Metric> exporter)
+        : this(exporter, options: null)
+    {
     }
 
     internal BaseExporter<Metric> Exporter => this.exporter;

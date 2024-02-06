@@ -153,11 +153,10 @@ public static class InMemoryExporterMetricsExtensions
     {
         var metricExporter = new InMemoryExporter<Metric>(exportedItems);
 
-        return PeriodicExportingMetricReaderHelper.CreatePeriodicExportingMetricReader(
-            metricExporter,
-            metricReaderOptions,
-            DefaultExportIntervalMilliseconds,
-            DefaultExportTimeoutMilliseconds);
+        metricReaderOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds ??= DefaultExportIntervalMilliseconds;
+        metricReaderOptions.PeriodicExportingMetricReaderOptions.ExportTimeoutMilliseconds ??= DefaultExportTimeoutMilliseconds;
+
+        return new PeriodicExportingMetricReader(metricExporter, metricReaderOptions);
     }
 
     private static MetricReader BuildInMemoryExporterMetricReader(
@@ -167,11 +166,10 @@ public static class InMemoryExporterMetricsExtensions
         var metricExporter = new InMemoryExporter<Metric>(
             exportFunc: (in Batch<Metric> metricBatch) => ExportMetricSnapshot(in metricBatch, exportedItems));
 
-        return PeriodicExportingMetricReaderHelper.CreatePeriodicExportingMetricReader(
-            metricExporter,
-            metricReaderOptions,
-            DefaultExportIntervalMilliseconds,
-            DefaultExportTimeoutMilliseconds);
+        metricReaderOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds ??= DefaultExportIntervalMilliseconds;
+        metricReaderOptions.PeriodicExportingMetricReaderOptions.ExportTimeoutMilliseconds ??= DefaultExportTimeoutMilliseconds;
+
+        return new PeriodicExportingMetricReader(metricExporter, metricReaderOptions);
     }
 
     private static ExportResult ExportMetricSnapshot(in Batch<Metric> batch, ICollection<MetricSnapshot> exportedItems)

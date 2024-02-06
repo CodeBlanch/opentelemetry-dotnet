@@ -190,8 +190,6 @@ public static class OtlpMetricExporterExtensions
             metricExporter = configureExporterInstance(metricExporter);
         }
 
-        return PeriodicExportingMetricReaderHelper.CreatePeriodicExportingMetricReader(
-            metricExporter,
-            metricReaderOptions);
+        return new PeriodicExportingMetricReader(metricExporter, metricReaderOptions);
     }
 }

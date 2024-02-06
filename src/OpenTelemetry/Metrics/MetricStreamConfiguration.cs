@@ -109,10 +109,10 @@ public class MetricStreamConfiguration
     /// <para>Spec reference: <see
     /// href="https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/sdk.md#cardinality-limits">Cardinality
     /// limits</see>.</para>
-    /// Note: If not set, the MeterProvider cardinality limit value will be
-    /// used, which defaults to 2000. Call <see
-    /// cref="MeterProviderBuilderExtensions.SetMaxMetricPointsPerMetricStream"/>
-    /// to configure the MeterProvider default.
+    /// Note: If not set, the MetricReader cardinality limit value will be used,
+    /// which defaults to 2000. Set <see
+    /// cref="MetricReaderOptions.CardinalityLimit"/> to configure the
+    /// MetricReader default.
     /// </remarks>
 #if NET8_0_OR_GREATER
     [Experimental(DiagnosticDefinitions.CardinalityLimitExperimentalApi, UrlFormat = DiagnosticDefinitions.ExperimentalApiUrlFormat)]

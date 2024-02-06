@@ -27,25 +27,19 @@ public class PeriodicExportingMetricReader : BaseExportingMetricReader
     /// Initializes a new instance of the <see cref="PeriodicExportingMetricReader"/> class.
     /// </summary>
     /// <param name="exporter">Exporter instance to export Metrics to.</param>
-    /// <param name="exportIntervalMilliseconds">The interval in milliseconds between two consecutive exports. The default value is 60000.</param>
-    /// <param name="exportTimeoutMilliseconds">How long the export can run before it is cancelled. The default value is 30000.</param>
+    /// <param name="options">Optional <see cref="MetricReaderOptions"/>.</param>
     public PeriodicExportingMetricReader(
         BaseExporter<Metric> exporter,
-        int exportIntervalMilliseconds = DefaultExportIntervalMilliseconds,
-        int exportTimeoutMilliseconds = DefaultExportTimeoutMilliseconds)
-        : base(exporter)
+        MetricReaderOptions? options)
+        : base(exporter, options)
     {
-        Guard.ThrowIfInvalidTimeout(exportIntervalMilliseconds);
-        Guard.ThrowIfZero(exportIntervalMilliseconds);
-        Guard.ThrowIfInvalidTimeout(exportTimeoutMilliseconds);
-
         if ((this.SupportedExportModes & ExportModes.Push) != ExportModes.Push)
         {
             throw new InvalidOperationException($"The '{nameof(exporter)}' does not support '{nameof(ExportModes)}.{nameof(ExportModes.Push)}'");
         }
 
-        this.ExportIntervalMilliseconds = exportIntervalMilliseconds;
-        this.ExportTimeoutMilliseconds = exportTimeoutMilliseconds;
+        this.ExportIntervalMilliseconds = options?.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds ?? DefaultExportIntervalMilliseconds;
+        this.ExportTimeoutMilliseconds = options?.PeriodicExportingMetricReaderOptions.ExportTimeoutMilliseconds ?? DefaultExportTimeoutMilliseconds;
 
         this.exporterThread = new Thread(new ThreadStart(this.ExporterProc))
         {
@@ -53,6 +47,21 @@ public class PeriodicExportingMetricReader : BaseExportingMetricReader
             Name = $"OpenTelemetry-{nameof(PeriodicExportingMetricReader)}-{exporter.GetType().Name}",
         };
         this.exporterThread.Start();
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PeriodicExportingMetricReader"/> class.
+    /// </summary>
+    /// <param name="exporter">Exporter instance to export Metrics to.</param>
+    /// <param name="exportIntervalMilliseconds">The interval in milliseconds between two consecutive exports. The default value is 60000.</param>
+    /// <param name="exportTimeoutMilliseconds">How long the export can run before it is cancelled. The default value is 30000.</param>
+    public PeriodicExportingMetricReader(
+        BaseExporter<Metric> exporter,
+        int exportIntervalMilliseconds = DefaultExportIntervalMilliseconds,
+        int exportTimeoutMilliseconds = DefaultExportTimeoutMilliseconds)
+        : this(
+              exporter, CreateOptions(exportIntervalMilliseconds, exportTimeoutMilliseconds))
+    {
     }
 
     /// <inheritdoc />
@@ -100,6 +109,22 @@ public class PeriodicExportingMetricReader : BaseExportingMetricReader
         }
 
         base.Dispose(disposing);
+    }
+
+    private static MetricReaderOptions CreateOptions(int exportIntervalMilliseconds, int exportTimeoutMilliseconds)
+    {
+        Guard.ThrowIfInvalidTimeout(exportIntervalMilliseconds);
+        Guard.ThrowIfZero(exportIntervalMilliseconds);
+        Guard.ThrowIfInvalidTimeout(exportTimeoutMilliseconds);
+
+        return new()
+        {
+            PeriodicExportingMetricReaderOptions = new PeriodicExportingMetricReaderOptions()
+            {
+                ExportIntervalMilliseconds = exportIntervalMilliseconds,
+                ExportTimeoutMilliseconds = exportTimeoutMilliseconds,
+            },
+        };
     }
 
     private void ExporterProc()

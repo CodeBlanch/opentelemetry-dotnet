@@ -134,6 +134,6 @@ public sealed class PeriodicExportingMetricReaderHelperTests : IDisposable
         options ??= new();
 
         var dummyMetricExporter = new InMemoryExporter<Metric>(Array.Empty<Metric>());
-        return PeriodicExportingMetricReaderHelper.CreatePeriodicExportingMetricReader(dummyMetricExporter, options);
+        return new PeriodicExportingMetricReader(dummyMetricExporter, options);
     }
 }

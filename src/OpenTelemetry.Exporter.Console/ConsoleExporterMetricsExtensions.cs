@@ -110,10 +110,9 @@ public static class ConsoleExporterMetricsExtensions
     {
         var metricExporter = new ConsoleMetricExporter(exporterOptions);
 
-        return PeriodicExportingMetricReaderHelper.CreatePeriodicExportingMetricReader(
-            metricExporter,
-            metricReaderOptions,
-            DefaultExportIntervalMilliseconds,
-            DefaultExportTimeoutMilliseconds);
+        metricReaderOptions.PeriodicExportingMetricReaderOptions.ExportIntervalMilliseconds ??= DefaultExportIntervalMilliseconds;
+        metricReaderOptions.PeriodicExportingMetricReaderOptions.ExportTimeoutMilliseconds ??= DefaultExportTimeoutMilliseconds;
+
+        return new PeriodicExportingMetricReader(metricExporter, metricReaderOptions);
     }
 }

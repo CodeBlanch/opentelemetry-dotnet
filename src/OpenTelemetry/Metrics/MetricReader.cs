@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
 using OpenTelemetry.Internal;
 
@@ -40,10 +41,32 @@ public abstract partial class MetricReader : IDisposable
     private readonly object onCollectLock = new();
     private readonly TaskCompletionSource<bool> shutdownTcs = new();
     private MetricReaderTemporalityPreference temporalityPreference = MetricReaderTemporalityPreferenceUnspecified;
+    private int? cardinalityLimit;
     private Func<Type, AggregationTemporality> temporalityFunc = CumulativeTemporalityPreferenceFunc;
     private int shutdownCount;
     private TaskCompletionSource<bool>? collectionTcs;
     private BaseProvider? parentProvider;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MetricReader"/> class.
+    /// </summary>
+    /// <param name="options">Optional <see cref="MetricReaderOptions"/>.</param>
+    public MetricReader(MetricReaderOptions? options)
+    {
+        if (options != null)
+        {
+            this.TemporalityPreference = options.TemporalityPreference;
+            this.cardinalityLimit = options.CardinalityLimit;
+        }
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MetricReader"/> class.
+    /// </summary>
+    public MetricReader()
+        : this(options: null)
+    {
+    }
 
     /// <summary>
     /// Gets or sets the metric reader temporality preference.
