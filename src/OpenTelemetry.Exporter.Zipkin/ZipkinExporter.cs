@@ -1,6 +1,8 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
+#nullable enable
+
 using System.Diagnostics;
 using System.Net;
 #if NETFRAMEWORK
@@ -30,7 +32,7 @@ public class ZipkinExporter : BaseExporter<Activity>
     /// </summary>
     /// <param name="options">Configuration options.</param>
     /// <param name="client">Http client to use to upload telemetry.</param>
-    public ZipkinExporter(ZipkinExporterOptions options, HttpClient client = null)
+    public ZipkinExporter(ZipkinExporterOptions options, HttpClient? client = null)
     {
         Guard.ThrowIfNull(options);
 
@@ -38,18 +40,12 @@ public class ZipkinExporter : BaseExporter<Activity>
         this.maxPayloadSizeInBytes = (!options.MaxPayloadSizeInBytes.HasValue || options.MaxPayloadSizeInBytes <= 0) ? ZipkinExporterOptions.DefaultMaxPayloadSizeInBytes : options.MaxPayloadSizeInBytes.Value;
         this.httpClient = client ?? options.HttpClientFactory?.Invoke() ?? throw new InvalidOperationException("ZipkinExporter was missing HttpClientFactory or it returned null.");
 
-        ZipkinTagTransformer.LogUnsupportedAttributeType = (string tagValueType, string tagKey) =>
-        {
-            ZipkinExporterEventSource.Log.UnsupportedAttributeType(tagValueType, tagKey);
-        };
+        ZipkinTagTransformer.LogUnsupportedAttributeType = ZipkinExporterEventSource.Log.UnsupportedAttributeType;
 
-        ConfigurationExtensions.LogInvalidEnvironmentVariable = (string key, string value) =>
-        {
-            ZipkinExporterEventSource.Log.InvalidEnvironmentVariable(key, value);
-        };
+        ConfigurationExtensions.LogInvalidEnvironmentVariable = ZipkinExporterEventSource.Log.InvalidEnvironmentVariable;
     }
 
-    internal ZipkinEndpoint LocalEndpoint { get; private set; }
+    internal ZipkinEndpoint? LocalEndpoint { get; private set; }
 
     /// <inheritdoc/>
     public override ExportResult Export(in Batch<Activity> batch)
@@ -93,15 +89,15 @@ public class ZipkinExporter : BaseExporter<Activity>
     {
         var hostName = ResolveHostName();
 
-        string ipv4 = null;
-        string ipv6 = null;
+        string? ipv4 = null;
+        string? ipv6 = null;
         if (!string.IsNullOrEmpty(hostName))
         {
-            ipv4 = ResolveHostAddress(hostName, AddressFamily.InterNetwork);
-            ipv6 = ResolveHostAddress(hostName, AddressFamily.InterNetworkV6);
+            ipv4 = ResolveHostAddress(hostName!, AddressFamily.InterNetwork);
+            ipv6 = ResolveHostAddress(hostName!, AddressFamily.InterNetworkV6);
         }
 
-        string serviceName = null;
+        string? serviceName = null;
         foreach (var label in resource.Attributes)
         {
             if (label.Key == ResourceSemanticConventions.AttributeServiceName)
@@ -125,9 +121,9 @@ public class ZipkinExporter : BaseExporter<Activity>
             tags: null);
     }
 
-    private static string ResolveHostAddress(string hostName, AddressFamily family)
+    private static string? ResolveHostAddress(string hostName, AddressFamily family)
     {
-        string result = null;
+        string? result = null;
 
         try
         {
@@ -155,9 +151,9 @@ public class ZipkinExporter : BaseExporter<Activity>
         return result;
     }
 
-    private static string ResolveHostName()
+    private static string? ResolveHostName()
     {
-        string result = null;
+        string? result = null;
 
         try
         {
@@ -190,7 +186,7 @@ public class ZipkinExporter : BaseExporter<Activity>
 
         private readonly ZipkinExporter exporter;
         private readonly Batch<Activity> batch;
-        private Utf8JsonWriter writer;
+        private Utf8JsonWriter? writer;
 
         public JsonContent(ZipkinExporter exporter, in Batch<Activity> batch)
         {
@@ -201,13 +197,13 @@ public class ZipkinExporter : BaseExporter<Activity>
         }
 
 #if NET6_0_OR_GREATER
-        protected override void SerializeToStream(Stream stream, TransportContext context, CancellationToken cancellationToken)
+        protected override void SerializeToStream(Stream stream, TransportContext? context, CancellationToken cancellationToken)
         {
             this.SerializeToStreamInternal(stream);
         }
 #endif
 
-        protected override Task SerializeToStreamAsync(Stream stream, TransportContext context)
+        protected override Task SerializeToStreamAsync(Stream stream, TransportContext? context)
         {
             this.SerializeToStreamInternal(stream);
             return Task.CompletedTask;

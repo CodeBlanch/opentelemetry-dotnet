@@ -1,6 +1,8 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
+#nullable enable
+
 using System.Diagnostics;
 #if NETFRAMEWORK
 using System.Net.Http;
@@ -24,6 +26,11 @@ public sealed class ZipkinExporterOptions
 
     internal static readonly Func<HttpClient> DefaultHttpClientFactory = () => new HttpClient();
 
+    private readonly ActivityExportProcessorOptions defaultProcessorOptions;
+    private Uri endpoint = new(DefaultZipkinEndpoint);
+    private ExportProcessorType? processorType;
+    private BatchExportProcessorOptions<Activity>? batchProcessorOptions;
+
     /// <summary>
     /// Initializes a new instance of the <see cref="ZipkinExporterOptions"/> class.
     /// Initializes zipkin endpoint.
@@ -35,24 +42,32 @@ public sealed class ZipkinExporterOptions
 
     internal ZipkinExporterOptions(
         IConfiguration configuration,
-        BatchExportActivityProcessorOptions defaultBatchOptions)
+        ActivityExportProcessorOptions defaultProcessorOptions)
     {
         Debug.Assert(configuration != null, "configuration was null");
-        Debug.Assert(defaultBatchOptions != null, "defaultBatchOptions was null");
+        Debug.Assert(defaultProcessorOptions != null, "defaultBatchOptions was null");
 
-        if (configuration.TryGetUriValue(ZipkinEndpointEnvVar, out var endpoint))
+        if (configuration!.TryGetUriValue(ZipkinEndpointEnvVar, out var endpoint))
         {
-            this.Endpoint = endpoint;
+            this.endpoint = endpoint!;
         }
 
-        this.BatchExportProcessorOptions = defaultBatchOptions;
+        this.defaultProcessorOptions = defaultProcessorOptions!;
     }
 
     /// <summary>
     /// Gets or sets Zipkin endpoint address. See https://zipkin.io/zipkin-api/#/default/post_spans.
     /// Typically https://zipkin-server-name:9411/api/v2/spans.
     /// </summary>
-    public Uri Endpoint { get; set; } = new Uri(DefaultZipkinEndpoint);
+    public Uri Endpoint
+    {
+        get => this.endpoint;
+        set
+        {
+            Guard.ThrowIfNull(value);
+            this.endpoint = value;
+        }
+    }
 
     /// <summary>
     /// Gets or sets a value indicating whether short trace id should be used.
@@ -67,12 +82,34 @@ public sealed class ZipkinExporterOptions
     /// <summary>
     /// Gets or sets the export processor type to be used with Zipkin Exporter. The default value is <see cref="ExportProcessorType.Batch"/>.
     /// </summary>
-    public ExportProcessorType ExportProcessorType { get; set; } = ExportProcessorType.Batch;
+    /// <remarks>
+    /// Note: This property is obsolete. To configure processor settings use:
+    /// <see
+    /// cref="ZipkinExporterHelperExtensions.AddZipkinExporter(TracerProviderBuilder,
+    /// Action{ZipkinExporterOptions, ActivityExportProcessorOptions})"/>.
+    /// </remarks>
+    [Obsolete("To configure processor settings use the AddZipkinExporter overload which exposes ActivityExportProcessorOptions. This property will be removed in a future version.")]
+    public ExportProcessorType ExportProcessorType
+    {
+        get => this.processorType ?? this.defaultProcessorOptions.ExportProcessorType;
+        set => this.processorType = value;
+    }
 
     /// <summary>
     /// Gets or sets the BatchExportProcessor options. Ignored unless ExportProcessorType is BatchExporter.
     /// </summary>
-    public BatchExportProcessorOptions<Activity> BatchExportProcessorOptions { get; set; }
+    /// <remarks>
+    /// Note: This property is obsolete. To configure processor settings use:
+    /// <see
+    /// cref="ZipkinExporterHelperExtensions.AddZipkinExporter(TracerProviderBuilder,
+    /// Action{ZipkinExporterOptions, ActivityExportProcessorOptions})"/>.
+    /// </remarks>
+    [Obsolete("To configure processor settings use the AddZipkinExporter overload which exposes ActivityExportProcessorOptions. This property will be removed in a future version.")]
+    public BatchExportProcessorOptions<Activity> BatchExportProcessorOptions
+    {
+        get => this.batchProcessorOptions ?? this.defaultProcessorOptions.BatchExportProcessorOptions;
+        set => this.batchProcessorOptions = value;
+    }
 
     /// <summary>
     /// Gets or sets the factory function called to create the <see
