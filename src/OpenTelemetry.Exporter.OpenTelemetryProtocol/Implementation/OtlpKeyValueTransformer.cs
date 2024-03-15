@@ -1,14 +1,17 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
+#nullable enable
+
 using OpenTelemetry.Internal;
 using OtlpCommon = OpenTelemetry.Proto.Common.V1;
 
 namespace OpenTelemetry.Exporter.OpenTelemetryProtocol.Implementation;
 
-internal sealed class OtlpKeyValueTransformer : TagAndValueTransformer<OtlpCommon.KeyValue, OtlpCommon.AnyValue>
+internal sealed class OtlpKeyValueTransformer : TagTransformer<OtlpCommon.KeyValue>
 {
     private OtlpKeyValueTransformer()
+        : base(OpenTelemetryProtocolExporterEventSource.Log.UnsupportedAttributeType)
     {
     }
 
@@ -16,66 +19,84 @@ internal sealed class OtlpKeyValueTransformer : TagAndValueTransformer<OtlpCommo
 
     protected override OtlpCommon.KeyValue TransformIntegralTag(string key, long value)
     {
-        return new OtlpCommon.KeyValue { Key = key, Value = this.TransformIntegralValue(value) };
+        return new OtlpCommon.KeyValue { Key = key, Value = ToAnyValue(value) };
     }
 
     protected override OtlpCommon.KeyValue TransformFloatingPointTag(string key, double value)
     {
-        return new OtlpCommon.KeyValue { Key = key, Value = this.TransformFloatingPointValue(value) };
+        return new OtlpCommon.KeyValue { Key = key, Value = ToAnyValue(value) };
     }
 
     protected override OtlpCommon.KeyValue TransformBooleanTag(string key, bool value)
     {
-        return new OtlpCommon.KeyValue { Key = key, Value = this.TransformBooleanValue(value) };
+        return new OtlpCommon.KeyValue { Key = key, Value = ToAnyValue(value) };
     }
 
     protected override OtlpCommon.KeyValue TransformStringTag(string key, string value)
     {
-        return new OtlpCommon.KeyValue { Key = key, Value = this.TransformStringValue(value) };
+        return new OtlpCommon.KeyValue { Key = key, Value = ToAnyValue(value) };
     }
 
     protected override OtlpCommon.KeyValue TransformArrayTag(string key, Array array)
-    {
-        return new OtlpCommon.KeyValue { Key = key, Value = this.TransformArrayValue(array) };
-    }
-
-    protected override OtlpCommon.AnyValue TransformIntegralValue(long value)
-    {
-        return new OtlpCommon.AnyValue { IntValue = value };
-    }
-
-    protected override OtlpCommon.AnyValue TransformFloatingPointValue(double value)
-    {
-        return new OtlpCommon.AnyValue { DoubleValue = value };
-    }
-
-    protected override OtlpCommon.AnyValue TransformBooleanValue(bool value)
-    {
-        return new OtlpCommon.AnyValue { BoolValue = value };
-    }
-
-    protected override OtlpCommon.AnyValue TransformStringValue(string value)
-    {
-        return new OtlpCommon.AnyValue { StringValue = value };
-    }
-
-    protected override OtlpCommon.AnyValue TransformArrayValue(Array array)
     {
         var arrayValue = new OtlpCommon.ArrayValue();
 
         foreach (var item in array)
         {
-            try
-            {
-                var value = item != null ? this.TransformValue(item) : new OtlpCommon.AnyValue();
-                arrayValue.Values.Add(value);
-            }
-            catch
-            {
-                return null;
-            }
+            arrayValue.Values.Add(ToAnyValue(item));
         }
 
-        return new OtlpCommon.AnyValue { ArrayValue = arrayValue };
+        return new OtlpCommon.KeyValue { Key = key, Value = new OtlpCommon.AnyValue { ArrayValue = arrayValue } };
+    }
+
+    private static OtlpCommon.AnyValue ToAnyValue(long value)
+        => new() { IntValue = value };
+
+    private static OtlpCommon.AnyValue ToAnyValue(double value)
+       => new() { DoubleValue = value };
+
+    private static OtlpCommon.AnyValue ToAnyValue(bool value)
+        => new() { BoolValue = value };
+
+    private static OtlpCommon.AnyValue ToAnyValue(string value)
+        => new() { StringValue = value };
+
+    private static OtlpCommon.AnyValue ToAnyValue(object? value)
+    {
+        if (value == null)
+        {
+            return new();
+        }
+
+        switch (value)
+        {
+            case char:
+            case string:
+                return ToAnyValue(Convert.ToString(value)!);
+            case bool b:
+                return ToAnyValue(b);
+            case byte:
+            case sbyte:
+            case short:
+            case ushort:
+            case int:
+            case uint:
+            case long:
+                return ToAnyValue(Convert.ToInt64(value));
+            case float:
+            case double:
+                return ToAnyValue(Convert.ToDouble(value));
+            default:
+                // Note: This may throw and we allow that to bubble up so we log
+                // the issue.
+                var stringValue = Convert.ToString(value);
+
+                if (stringValue == null)
+                {
+                    return new();
+                }
+
+                return ToAnyValue(stringValue);
+        }
     }
 }

@@ -28,11 +28,10 @@
   <ItemGroup>
     <Compile Include="$(RepoRoot)\src\Shared\PeriodicExportingMetricReaderHelper.cs" Link="Includes\PeriodicExportingMetricReaderHelper.cs" />
     <Compile Include="$(RepoRoot)\src\Shared\PeerServiceResolver.cs" Link="Includes\PeerServiceResolver.cs" />
-    <Compile Include="$(RepoRoot)\src\Shared\TagAndValueTransformer.cs" Link="Includes\TagAndValueTransformer.cs" />
     <Compile Include="$(RepoRoot)\src\Shared\TagTransformer.cs" Link="Includes\TagTransformer.cs" />
 
     <!-- Note: When '$(ExposeExperimentalFeatures)' == 'false' these links are
-    NOT required because this project sees API + SDK internals -->
+    NOT required because this project sees API internals -->
     <Compile Include="$(RepoRoot)\src\Shared\Guard.cs" Link="Includes\Guard.cs" RequiresExposedExperimentalFeatures="true" />
     <Compile Include="$(RepoRoot)\src\Shared\DiagnosticDefinitions.cs" Link="Includes\DiagnosticDefinitions.cs" RequiresExposedExperimentalFeatures="true" />
     <Compile Include="$(RepoRoot)\src\Shared\ExceptionExtensions.cs" Link="Includes\ExceptionExtensions.cs" RequiresExposedExperimentalFeatures="true" />

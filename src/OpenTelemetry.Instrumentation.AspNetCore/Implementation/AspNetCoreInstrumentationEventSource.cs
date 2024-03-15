@@ -79,4 +79,10 @@ internal sealed class AspNetCoreInstrumentationEventSource : EventSource
     {
         this.WriteEvent(5, handlerName, eventName, ex);
     }
+
+    [Event(6, Message = "{0} environment variable has an invalid value: '{1}'", Level = EventLevel.Warning)]
+    public void InvalidEnvironmentVariable(string key, string value)
+    {
+        this.WriteEvent(6, key, value);
+    }
 }
