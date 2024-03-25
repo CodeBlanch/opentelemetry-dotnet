@@ -416,10 +416,7 @@ internal static class MetricItemExtensions
 
         foreach (var tag in exemplar.FilteredTags)
         {
-            if (OtlpTagTransformer.Instance.TryTransformTag(tag, out var result))
-            {
-                otlpExemplar.FilteredAttributes.Add(result);
-            }
+            OtlpTagWriter.Instance.TryWriteTag(otlpExemplar.FilteredAttributes, tag);
         }
 
         return otlpExemplar;
@@ -429,10 +426,7 @@ internal static class MetricItemExtensions
     {
         foreach (var tag in tags)
         {
-            if (OtlpTagTransformer.Instance.TryTransformTag(tag, out var result))
-            {
-                attributes.Add(result);
-            }
+            OtlpTagWriter.Instance.TryWriteTag(attributes, tag);
         }
     }
 
@@ -440,10 +434,7 @@ internal static class MetricItemExtensions
     {
         foreach (var tag in meterTags)
         {
-            if (OtlpTagTransformer.Instance.TryTransformTag(tag, out var result))
-            {
-                attributes.Add(result);
-            }
+            OtlpTagWriter.Instance.TryWriteTag(attributes, tag);
         }
     }
 }

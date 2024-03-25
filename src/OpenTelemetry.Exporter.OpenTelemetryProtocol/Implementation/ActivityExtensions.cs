@@ -237,17 +237,13 @@ internal static class ActivityExtensions
         int maxTags = sdkLimitOptions.SpanLinkAttributeCountLimit ?? int.MaxValue;
         foreach (ref readonly var tag in activityLink.EnumerateTagObjects())
         {
-            if (OtlpTagTransformer.Instance.TryTransformTag(tag, out var attribute, sdkLimitOptions.AttributeValueLengthLimit))
+            if (otlpLink.Attributes.Count == maxTags)
             {
-                if (otlpLink.Attributes.Count < maxTags)
-                {
-                    otlpLink.Attributes.Add(attribute);
-                }
-                else
-                {
-                    otlpLink.DroppedAttributesCount++;
-                }
+                otlpLink.DroppedAttributesCount++;
+                continue;
             }
+
+            OtlpTagWriter.Instance.TryWriteTag(otlpLink.Attributes, tag, sdkLimitOptions.AttributeValueLengthLimit);
         }
 
         return otlpLink;
@@ -265,17 +261,13 @@ internal static class ActivityExtensions
         int maxTags = sdkLimitOptions.SpanEventAttributeCountLimit ?? int.MaxValue;
         foreach (ref readonly var tag in activityEvent.EnumerateTagObjects())
         {
-            if (OtlpTagTransformer.Instance.TryTransformTag(tag, out var attribute, sdkLimitOptions.AttributeValueLengthLimit))
+            if (otlpEvent.Attributes.Count == maxTags)
             {
-                if (otlpEvent.Attributes.Count < maxTags)
-                {
-                    otlpEvent.Attributes.Add(attribute);
-                }
-                else
-                {
-                    otlpEvent.DroppedAttributesCount++;
-                }
+                otlpEvent.DroppedAttributesCount++;
+                continue;
             }
+
+            OtlpTagWriter.Instance.TryWriteTag(otlpEvent.Attributes, tag, sdkLimitOptions.AttributeValueLengthLimit);
         }
 
         return otlpEvent;
@@ -322,26 +314,22 @@ internal static class ActivityExtensions
                         continue;
                 }
 
-                if (OtlpTagTransformer.Instance.TryTransformTag(tag, out var attribute, this.SdkLimitOptions.AttributeValueLengthLimit))
+                if (this.Span.Attributes.Count == maxTags)
                 {
-                    if (this.Span.Attributes.Count < maxTags)
-                    {
-                        this.Span.Attributes.Add(attribute);
-                    }
-                    else
-                    {
-                        this.Span.DroppedAttributesCount++;
-                    }
+                    this.Span.DroppedAttributesCount++;
+                }
+                else
+                {
+                    OtlpTagWriter.Instance.TryWriteTag(this.Span.Attributes, tag, this.SdkLimitOptions.AttributeValueLengthLimit);
+                }
 
-                    if (attribute.Value.ValueCase == AnyValue.ValueOneofCase.StringValue)
-                    {
-                        // Note: tag.Value is used and not attribute.Value here because attribute.Value may be truncated
-                        PeerServiceResolver.InspectTag(ref this, key, tag.Value as string);
-                    }
-                    else if (attribute.Value.ValueCase == AnyValue.ValueOneofCase.IntValue)
-                    {
-                        PeerServiceResolver.InspectTag(ref this, key, attribute.Value.IntValue);
-                    }
+                if (tag.Value is string tagStringValue)
+                {
+                    PeerServiceResolver.InspectTag(ref this, key, tagStringValue);
+                }
+                else if (tag.Value is int tagIntValue)
+                {
+                    PeerServiceResolver.InspectTag(ref this, key, tagIntValue);
                 }
             }
         }

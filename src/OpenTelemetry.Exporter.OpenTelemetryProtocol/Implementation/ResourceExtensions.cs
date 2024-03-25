@@ -15,10 +15,7 @@ internal static class ResourceExtensions
 
         foreach (KeyValuePair<string, object> attribute in resource.Attributes)
         {
-            if (OtlpTagTransformer.Instance.TryTransformTag(attribute, out var result))
-            {
-                processResource.Attributes.Add(result);
-            }
+            OtlpTagWriter.Instance.TryWriteTag(processResource.Attributes, attribute);
         }
 
         if (!processResource.Attributes.Any(kvp => kvp.Key == ResourceSemanticConventions.AttributeServiceName))
