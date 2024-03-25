@@ -10,8 +10,8 @@ using System.Globalization;
 
 namespace OpenTelemetry.Internal;
 
-internal abstract class TagWriter<T, TArrayState>
-    where T : notnull
+internal abstract class TagWriter<TTagState, TArrayState>
+    where TTagState : notnull
     where TArrayState : notnull
 {
     private readonly ArrayTagWriter<TArrayState> arrayWriter;
@@ -25,7 +25,7 @@ internal abstract class TagWriter<T, TArrayState>
     }
 
     public bool TryWriteTag(
-        T state,
+        TTagState state,
         KeyValuePair<string, object?> tag,
         int? tagValueMaxLength = null)
     {
@@ -100,15 +100,15 @@ internal abstract class TagWriter<T, TArrayState>
         return true;
     }
 
-    protected abstract void WriteIntegralTag(T state, string key, long value);
+    protected abstract void WriteIntegralTag(TTagState state, string key, long value);
 
-    protected abstract void WriteFloatingPointTag(T state, string key, double value);
+    protected abstract void WriteFloatingPointTag(TTagState state, string key, double value);
 
-    protected abstract void WriteBooleanTag(T state, string key, bool value);
+    protected abstract void WriteBooleanTag(TTagState state, string key, bool value);
 
-    protected abstract void WriteStringTag(T state, string key, string value);
+    protected abstract void WriteStringTag(TTagState state, string key, string value);
 
-    protected abstract void WriteArrayTag(T state, string key, TArrayState value);
+    protected abstract void WriteArrayTag(TTagState state, string key, TArrayState value);
 
     protected abstract void OnUnsupportedTagDropped(
         string tagKey,
@@ -122,7 +122,7 @@ internal abstract class TagWriter<T, TArrayState>
             : value;
     }
 
-    private void WriteArrayTagInternal(T state, string key, Array array, int? tagValueMaxLength)
+    private void WriteArrayTagInternal(TTagState state, string key, Array array, int? tagValueMaxLength)
     {
         var arrayState = this.arrayWriter.BeginWriteArray();
 

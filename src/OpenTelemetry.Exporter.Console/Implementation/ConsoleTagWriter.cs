@@ -10,13 +10,12 @@ using OpenTelemetry.Internal;
 
 namespace OpenTelemetry.Exporter;
 
-internal sealed class ConsoleTagWriter : TagWriter<List<string>, JsonStringArrayTagWriter.JsonStringArrayTagWriterState>
+internal sealed class ConsoleTagWriter : JsonStringArrayTagWriter<List<string>>
 {
     private readonly List<string> tagStorage = new(1);
     private readonly Action<string, string> onUnsupportedTagDropped;
 
     public ConsoleTagWriter(Action<string, string> onUnsupportedTagDropped)
-        : base(new JsonStringArrayTagWriter())
     {
         Debug.Assert(onUnsupportedTagDropped != null, "onUnsupportedTagDropped was null");
 
@@ -56,13 +55,9 @@ internal sealed class ConsoleTagWriter : TagWriter<List<string>, JsonStringArray
         tags.Add($"{key}: {value}");
     }
 
-    protected override void WriteArrayTag(List<string> tags, string key, JsonStringArrayTagWriter.JsonStringArrayTagWriterState array)
+    protected override void WriteArrayTag(List<string> tags, string key, ArraySegment<byte> arrayUtf8JsonBytes)
     {
-        var result = array.Stream.TryGetBuffer(out var buffer);
-
-        Debug.Assert(result, "result was false");
-
-        tags.Add($"{key}: {Encoding.UTF8.GetString(buffer.Array!, 0, buffer.Count)}");
+        tags.Add($"{key}: {Encoding.UTF8.GetString(arrayUtf8JsonBytes.Array!, 0, arrayUtf8JsonBytes.Count)}");
     }
 
     protected override void OnUnsupportedTagDropped(

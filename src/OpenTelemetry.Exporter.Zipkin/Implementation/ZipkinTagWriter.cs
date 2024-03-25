@@ -3,16 +3,14 @@
 
 #nullable enable
 
-using System.Diagnostics;
 using System.Text.Json;
 using OpenTelemetry.Internal;
 
 namespace OpenTelemetry.Exporter.Zipkin.Implementation;
 
-internal sealed class ZipkinTagWriter : TagWriter<Utf8JsonWriter, JsonStringArrayTagWriter.JsonStringArrayTagWriterState>
+internal sealed class ZipkinTagWriter : JsonStringArrayTagWriter<Utf8JsonWriter>
 {
     private ZipkinTagWriter()
-        : base(new JsonStringArrayTagWriter())
     {
     }
 
@@ -30,14 +28,10 @@ internal sealed class ZipkinTagWriter : TagWriter<Utf8JsonWriter, JsonStringArra
     protected override void WriteStringTag(Utf8JsonWriter writer, string key, string value)
         => writer.WriteString(key, value);
 
-    protected override void WriteArrayTag(Utf8JsonWriter writer, string key, JsonStringArrayTagWriter.JsonStringArrayTagWriterState array)
+    protected override void WriteArrayTag(Utf8JsonWriter writer, string key, ArraySegment<byte> arrayUtf8JsonBytes)
     {
-        var result = array.Stream.TryGetBuffer(out var buffer);
-
-        Debug.Assert(result, "result was false");
-
         writer.WritePropertyName(key);
-        writer.WriteStringValue(buffer);
+        writer.WriteStringValue(arrayUtf8JsonBytes);
     }
 
     protected override void OnUnsupportedTagDropped(
