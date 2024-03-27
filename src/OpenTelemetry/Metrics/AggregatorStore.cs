@@ -221,14 +221,7 @@ internal sealed class AggregatorStore
                 continue;
             }
 
-            if (this.IsExemplarEnabled())
-            {
-                metricPoint.TakeSnapshotWithExemplar(outputDelta: true);
-            }
-            else
-            {
-                metricPoint.TakeSnapshot(outputDelta: true);
-            }
+            metricPoint.TakeSnapshot(outputDelta: true);
 
             this.currentMetricPointBatch[this.batchSize] = i;
             this.batchSize++;
@@ -246,14 +239,7 @@ internal sealed class AggregatorStore
         ref var metricPointWithNoTags = ref this.metricPoints[0];
         if (metricPointWithNoTags.MetricPointStatus != MetricPointStatus.NoCollectPending)
         {
-            if (this.IsExemplarEnabled())
-            {
-                metricPointWithNoTags.TakeSnapshotWithExemplar(outputDelta: true);
-            }
-            else
-            {
-                metricPointWithNoTags.TakeSnapshot(outputDelta: true);
-            }
+            metricPointWithNoTags.TakeSnapshot(outputDelta: true);
 
             this.currentMetricPointBatch[this.batchSize] = 0;
             this.batchSize++;
@@ -265,14 +251,7 @@ internal sealed class AggregatorStore
             ref var metricPointForOverflow = ref this.metricPoints[1];
             if (metricPointForOverflow.MetricPointStatus != MetricPointStatus.NoCollectPending)
             {
-                if (this.IsExemplarEnabled())
-                {
-                    metricPointForOverflow.TakeSnapshotWithExemplar(outputDelta: true);
-                }
-                else
-                {
-                    metricPointForOverflow.TakeSnapshot(outputDelta: true);
-                }
+                metricPointForOverflow.TakeSnapshot(outputDelta: true);
 
                 this.currentMetricPointBatch[this.batchSize] = 1;
                 this.batchSize++;
@@ -329,14 +308,7 @@ internal sealed class AggregatorStore
                 continue;
             }
 
-            if (this.IsExemplarEnabled())
-            {
-                metricPoint.TakeSnapshotWithExemplar(outputDelta: true);
-            }
-            else
-            {
-                metricPoint.TakeSnapshot(outputDelta: true);
-            }
+            metricPoint.TakeSnapshot(outputDelta: true);
 
             this.currentMetricPointBatch[this.batchSize] = i;
             this.batchSize++;
@@ -358,14 +330,7 @@ internal sealed class AggregatorStore
                 continue;
             }
 
-            if (this.IsExemplarEnabled())
-            {
-                metricPoint.TakeSnapshotWithExemplar(outputDelta: false);
-            }
-            else
-            {
-                metricPoint.TakeSnapshot(outputDelta: false);
-            }
+            metricPoint.TakeSnapshot(outputDelta: false);
 
             this.currentMetricPointBatch[this.batchSize] = i;
             this.batchSize++;
@@ -966,6 +931,8 @@ internal sealed class AggregatorStore
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void UpdateLongMetricPoint(int metricPointIndex, long value, ReadOnlySpan<KeyValuePair<string, object?>> tags)
     {
+        var offerExemplar = this.ShouldOfferExemplar();
+
         if (metricPointIndex < 0)
         {
             Interlocked.Increment(ref this.DroppedMeasurements);
@@ -973,7 +940,7 @@ internal sealed class AggregatorStore
             if (this.EmitOverflowAttribute)
             {
                 this.InitializeOverflowTagPointIfNotInitialized();
-                this.metricPoints[1].Update(value);
+                this.metricPoints[1].Update(value, tags, offerExemplar);
             }
             else if (Interlocked.CompareExchange(ref this.metricCapHitMessageLogged, 1, 0) == 0)
             {
@@ -983,25 +950,7 @@ internal sealed class AggregatorStore
             return;
         }
 
-        var exemplarFilterType = this.exemplarFilter;
-        if (exemplarFilterType == ExemplarFilterType.AlwaysOff)
-        {
-            this.metricPoints[metricPointIndex].Update(value);
-        }
-        else if (exemplarFilterType == ExemplarFilterType.AlwaysOn)
-        {
-            this.metricPoints[metricPointIndex].UpdateWithExemplar(
-                value,
-                tags,
-                isSampled: true);
-        }
-        else
-        {
-            this.metricPoints[metricPointIndex].UpdateWithExemplar(
-                value,
-                tags,
-                isSampled: Activity.Current?.Recorded ?? false);
-        }
+        this.metricPoints[metricPointIndex].Update(value, tags, offerExemplar);
     }
 
     private void UpdateDouble(double value, ReadOnlySpan<KeyValuePair<string, object?>> tags)
@@ -1021,6 +970,8 @@ internal sealed class AggregatorStore
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void UpdateDoubleMetricPoint(int metricPointIndex, double value, ReadOnlySpan<KeyValuePair<string, object?>> tags)
     {
+        var offerExemplar = this.ShouldOfferExemplar();
+
         if (metricPointIndex < 0)
         {
             Interlocked.Increment(ref this.DroppedMeasurements);
@@ -1028,7 +979,7 @@ internal sealed class AggregatorStore
             if (this.EmitOverflowAttribute)
             {
                 this.InitializeOverflowTagPointIfNotInitialized();
-                this.metricPoints[1].Update(value);
+                this.metricPoints[1].Update(value, tags, offerExemplar);
             }
             else if (Interlocked.CompareExchange(ref this.metricCapHitMessageLogged, 1, 0) == 0)
             {
@@ -1038,24 +989,25 @@ internal sealed class AggregatorStore
             return;
         }
 
+        this.metricPoints[metricPointIndex].Update(value, tags, offerExemplar);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool ShouldOfferExemplar()
+    {
         var exemplarFilterType = this.exemplarFilter;
         if (exemplarFilterType == ExemplarFilterType.AlwaysOff)
         {
-            this.metricPoints[metricPointIndex].Update(value);
+            return false;
         }
         else if (exemplarFilterType == ExemplarFilterType.AlwaysOn)
         {
-            this.metricPoints[metricPointIndex].UpdateWithExemplar(
-                value,
-                tags,
-                isSampled: true);
+            return true;
         }
         else
         {
-            this.metricPoints[metricPointIndex].UpdateWithExemplar(
-                value,
-                tags,
-                isSampled: Activity.Current?.Recorded ?? false);
+            Debug.Assert(exemplarFilterType == ExemplarFilterType.TraceBased, "exemplarFilterType has an unexpected value");
+            return Activity.Current?.Recorded ?? false;
         }
     }
 
