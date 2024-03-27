@@ -392,26 +392,58 @@ public struct MetricPoint
         {
             case AggregationType.LongSumIncomingDelta:
                 {
-                    Interlocked.Add(ref this.runningValue.AsLong, number);
+                    this.UpdateSum(number, tags, offerExemplar);
                     break;
                 }
 
             case AggregationType.LongSumIncomingCumulative:
             case AggregationType.LongGauge:
                 {
-                    Interlocked.Exchange(ref this.runningValue.AsLong, number);
+                    this.UpdateLastValue(number, tags, offerExemplar);
+                    break;
+                }
+
+            case AggregationType.Histogram:
+                {
+                    this.UpdateHistogram(number, tags, offerExemplar);
+                    break;
+                }
+
+            case AggregationType.HistogramWithMinMax:
+                {
+                    this.UpdateHistogramWithMinMax(number, tags, offerExemplar);
+                    break;
+                }
+
+            case AggregationType.HistogramWithBuckets:
+                {
+                    this.UpdateHistogramWithBuckets(number, tags, offerExemplar);
+                    break;
+                }
+
+            case AggregationType.HistogramWithMinMaxBuckets:
+                {
+                    this.UpdateHistogramWithBucketsAndMinMax(number, tags, offerExemplar);
+                    break;
+                }
+
+            case AggregationType.Base2ExponentialHistogram:
+                {
+                    this.UpdateBase2ExponentialHistogram(number, tags, offerExemplar);
+                    break;
+                }
+
+            case AggregationType.Base2ExponentialHistogramWithMinMax:
+                {
+                    this.UpdateBase2ExponentialHistogramWithMinMax(number, tags, offerExemplar);
                     break;
                 }
 
             default:
-                // Note: long number gets case to double for histograms
-                this.UpdateHistogramAndCompleteUpdate(number, tags, offerExemplar);
-                return;
+                Debug.Fail("Unexpected AggregationType encountered");
+                this.CompleteUpdateWithoutMeasurement();
+                break;
         }
-
-        this.CompleteUpdate();
-
-        this.UpdateExemplar(offerExemplar, number, tags, explicitBucketHistogramBucketIndex: -1);
     }
 
     internal void Update(double number, ReadOnlySpan<KeyValuePair<string, object?>> tags, bool offerExemplar)
@@ -420,77 +452,58 @@ public struct MetricPoint
         {
             case AggregationType.DoubleSumIncomingDelta:
                 {
-                    InterlockedHelper.Add(ref this.runningValue.AsDouble, number);
+                    this.UpdateSum(number, tags, offerExemplar);
                     break;
                 }
 
             case AggregationType.DoubleSumIncomingCumulative:
             case AggregationType.DoubleGauge:
                 {
-                    Interlocked.Exchange(ref this.runningValue.AsDouble, number);
+                    this.UpdateLastValue(number, tags, offerExemplar);
                     break;
                 }
 
-            default:
-                this.UpdateHistogramAndCompleteUpdate(number, tags, offerExemplar);
-                return;
-        }
-
-        this.CompleteUpdate();
-
-        this.UpdateExemplar(offerExemplar, number, tags, explicitBucketHistogramBucketIndex: -1);
-    }
-
-    internal void UpdateHistogramAndCompleteUpdate(double number, ReadOnlySpan<KeyValuePair<string, object?>> tags, bool offerExemplar)
-    {
-        int explicitBucketHistogramBucketIndex = -1;
-
-        switch (this.aggType)
-        {
             case AggregationType.Histogram:
                 {
-                    this.UpdateHistogram(number);
+                    this.UpdateHistogram(number, tags, offerExemplar);
                     break;
                 }
 
             case AggregationType.HistogramWithMinMax:
                 {
-                    this.UpdateHistogramWithMinMax(number);
+                    this.UpdateHistogramWithMinMax(number, tags, offerExemplar);
                     break;
                 }
 
             case AggregationType.HistogramWithBuckets:
                 {
-                    this.UpdateHistogramWithBuckets(number, out explicitBucketHistogramBucketIndex);
+                    this.UpdateHistogramWithBuckets(number, tags, offerExemplar);
                     break;
                 }
 
             case AggregationType.HistogramWithMinMaxBuckets:
                 {
-                    this.UpdateHistogramWithBucketsAndMinMax(number, out explicitBucketHistogramBucketIndex);
+                    this.UpdateHistogramWithBucketsAndMinMax(number, tags, offerExemplar);
                     break;
                 }
 
             case AggregationType.Base2ExponentialHistogram:
                 {
-                    this.UpdateBase2ExponentialHistogram(number);
+                    this.UpdateBase2ExponentialHistogram(number, tags, offerExemplar);
                     break;
                 }
 
             case AggregationType.Base2ExponentialHistogramWithMinMax:
                 {
-                    this.UpdateBase2ExponentialHistogramWithMinMax(number);
+                    this.UpdateBase2ExponentialHistogramWithMinMax(number, tags, offerExemplar);
                     break;
                 }
 
             default:
                 Debug.Fail("Unexpected AggregationType encountered");
+                this.CompleteUpdateWithoutMeasurement();
                 break;
         }
-
-        this.CompleteUpdate();
-
-        this.UpdateExemplar(offerExemplar, number, tags, explicitBucketHistogramBucketIndex);
     }
 
     internal void TakeSnapshot(bool outputDelta)
@@ -758,7 +771,48 @@ public struct MetricPoint
         this.mpComponents = null;
     }
 
-    private void UpdateHistogram(double number)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void UpdateSum(long number, ReadOnlySpan<KeyValuePair<string, object?>> tags, bool offerExemplar)
+    {
+        Interlocked.Add(ref this.runningValue.AsLong, number);
+
+        this.CompleteUpdate();
+
+        this.UpdateExemplar(offerExemplar, number, tags);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void UpdateLastValue(long number, ReadOnlySpan<KeyValuePair<string, object?>> tags, bool offerExemplar)
+    {
+        Interlocked.Exchange(ref this.runningValue.AsLong, number);
+
+        this.CompleteUpdate();
+
+        this.UpdateExemplar(offerExemplar, number, tags);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void UpdateSum(double number, ReadOnlySpan<KeyValuePair<string, object?>> tags, bool offerExemplar)
+    {
+        InterlockedHelper.Add(ref this.runningValue.AsDouble, number);
+
+        this.CompleteUpdate();
+
+        this.UpdateExemplar(offerExemplar, number, tags);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void UpdateLastValue(double number, ReadOnlySpan<KeyValuePair<string, object?>> tags, bool offerExemplar)
+    {
+        Interlocked.Exchange(ref this.runningValue.AsDouble, number);
+
+        this.CompleteUpdate();
+
+        this.UpdateExemplar(offerExemplar, number, tags);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void UpdateHistogram(double number, ReadOnlySpan<KeyValuePair<string, object?>> tags, bool offerExemplar)
     {
         Debug.Assert(this.mpComponents?.HistogramBuckets != null, "HistogramBuckets was null");
 
@@ -773,9 +827,14 @@ public struct MetricPoint
         }
 
         this.mpComponents.ReleaseLock();
+
+        this.UpdateExemplar(offerExemplar, number, tags);
+
+        this.CompleteUpdate();
     }
 
-    private void UpdateHistogramWithMinMax(double number)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void UpdateHistogramWithMinMax(double number, ReadOnlySpan<KeyValuePair<string, object?>> tags, bool offerExemplar)
     {
         Debug.Assert(this.mpComponents?.HistogramBuckets != null, "HistogramBuckets was null");
 
@@ -793,15 +852,20 @@ public struct MetricPoint
         histogramBuckets.RunningMax = Math.Max(histogramBuckets.RunningMax, number);
 
         this.mpComponents.ReleaseLock();
+
+        this.UpdateExemplar(offerExemplar, number, tags);
+
+        this.CompleteUpdate();
     }
 
-    private void UpdateHistogramWithBuckets(double number, out int bucketIndex)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void UpdateHistogramWithBuckets(double number, ReadOnlySpan<KeyValuePair<string, object?>> tags, bool offerExemplar)
     {
         Debug.Assert(this.mpComponents?.HistogramBuckets != null, "HistogramBuckets was null");
 
         var histogramBuckets = this.mpComponents!.HistogramBuckets;
 
-        bucketIndex = histogramBuckets!.FindBucketIndex(number);
+        int bucketIndex = histogramBuckets!.FindBucketIndex(number);
 
         this.mpComponents.AcquireLock();
 
@@ -813,15 +877,20 @@ public struct MetricPoint
         }
 
         this.mpComponents.ReleaseLock();
+
+        this.UpdateExemplar(offerExemplar, number, tags, bucketIndex);
+
+        this.CompleteUpdate();
     }
 
-    private void UpdateHistogramWithBucketsAndMinMax(double number, out int bucketIndex)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void UpdateHistogramWithBucketsAndMinMax(double number, ReadOnlySpan<KeyValuePair<string, object?>> tags, bool offerExemplar)
     {
         Debug.Assert(this.mpComponents?.HistogramBuckets != null, "histogramBuckets was null");
 
         var histogramBuckets = this.mpComponents!.HistogramBuckets;
 
-        bucketIndex = histogramBuckets!.FindBucketIndex(number);
+        int bucketIndex = histogramBuckets!.FindBucketIndex(number);
 
         this.mpComponents.AcquireLock();
 
@@ -836,12 +905,18 @@ public struct MetricPoint
         histogramBuckets.RunningMax = Math.Max(histogramBuckets.RunningMax, number);
 
         this.mpComponents.ReleaseLock();
+
+        this.UpdateExemplar(offerExemplar, number, tags, bucketIndex);
+
+        this.CompleteUpdate();
     }
 
-    private void UpdateBase2ExponentialHistogram(double number)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void UpdateBase2ExponentialHistogram(double number, ReadOnlySpan<KeyValuePair<string, object?>> tags, bool offerExemplar)
     {
         if (number < 0)
         {
+            this.CompleteUpdateWithoutMeasurement();
             return;
         }
 
@@ -859,12 +934,18 @@ public struct MetricPoint
         }
 
         this.mpComponents.ReleaseLock();
+
+        this.UpdateExemplar(offerExemplar, number, tags);
+
+        this.CompleteUpdate();
     }
 
-    private void UpdateBase2ExponentialHistogramWithMinMax(double number)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void UpdateBase2ExponentialHistogramWithMinMax(double number, ReadOnlySpan<KeyValuePair<string, object?>> tags, bool offerExemplar)
     {
         if (number < 0)
         {
+            this.CompleteUpdateWithoutMeasurement();
             return;
         }
 
@@ -885,33 +966,35 @@ public struct MetricPoint
         histogram.RunningMax = Math.Max(histogram.RunningMax, number);
 
         this.mpComponents.ReleaseLock();
+
+        this.UpdateExemplar(offerExemplar, number, tags);
+
+        this.CompleteUpdate();
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private readonly void UpdateExemplar<T>(bool offerExemplar, T number, ReadOnlySpan<KeyValuePair<string, object?>> tags, int explicitBucketHistogramBucketIndex)
-        where T : struct
+    private readonly void UpdateExemplar(bool offerExemplar, long number, ReadOnlySpan<KeyValuePair<string, object?>> tags)
     {
         if (offerExemplar)
         {
             Debug.Assert(this.mpComponents?.ExemplarReservoir != null, "ExemplarReservoir was null");
 
             // TODO: A custom implementation of `ExemplarReservoir.Offer` might throw an exception.
-            if (typeof(T) == typeof(long))
-            {
-                this.mpComponents!.ExemplarReservoir!.Offer(
-                    new ExemplarMeasurement<long>((long)(object)number, tags));
-            }
-            else if (typeof(T) == typeof(double))
-            {
-                this.mpComponents!.ExemplarReservoir!.Offer(
-                    new ExemplarMeasurement<double>((double)(object)number, tags, explicitBucketHistogramBucketIndex));
-            }
-            else
-            {
-                Debug.Fail("Unexpected type");
-                this.mpComponents!.ExemplarReservoir!.Offer(
-                    new ExemplarMeasurement<double>(Convert.ToDouble(number), tags));
-            }
+            this.mpComponents!.ExemplarReservoir!.Offer(
+                new ExemplarMeasurement<long>(number, tags));
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private readonly void UpdateExemplar(bool offerExemplar, double number, ReadOnlySpan<KeyValuePair<string, object?>> tags, int explicitBucketHistogramBucketIndex = -1)
+    {
+        if (offerExemplar)
+        {
+            Debug.Assert(this.mpComponents?.ExemplarReservoir != null, "ExemplarReservoir was null");
+
+            // TODO: A custom implementation of `ExemplarReservoir.Offer` might throw an exception.
+            this.mpComponents!.ExemplarReservoir!.Offer(
+                new ExemplarMeasurement<double>(number, tags, explicitBucketHistogramBucketIndex));
         }
     }
 
@@ -931,6 +1014,12 @@ public struct MetricPoint
         // by ignoring Zero points
         this.MetricPointStatus = MetricPointStatus.CollectPending;
 
+        this.CompleteUpdateWithoutMeasurement();
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void CompleteUpdateWithoutMeasurement()
+    {
         if (this.aggregatorStore.OutputDeltaWithUnusedMetricPointReclaimEnabled)
         {
             Interlocked.Decrement(ref this.ReferenceCount);
