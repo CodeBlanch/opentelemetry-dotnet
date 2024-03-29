@@ -49,10 +49,9 @@ internal sealed class AggregatorStore
     private readonly double[] histogramBounds;
     private readonly int exponentialHistogramMaxSize;
     private readonly int exponentialHistogramMaxScale;
-    private readonly UpdateLongDelegate updateLongCallback;
-    private readonly UpdateDoubleDelegate updateDoubleCallback;
     private readonly ExemplarFilterType exemplarFilter;
     private readonly Func<KeyValuePair<string, object?>[], int, int> lookupAggregatorStore;
+    private readonly MetricPointAggregator metricPointAggregator;
 
     private int metricPointIndex = 0;
     private int batchSize = 0;
@@ -87,15 +86,8 @@ internal sealed class AggregatorStore
         this.exponentialHistogramMaxScale = metricStreamIdentity.ExponentialHistogramMaxScale;
         this.StartTimeExclusive = DateTimeOffset.UtcNow;
         this.ExemplarReservoirFactory = exemplarReservoirFactory;
-        if (metricStreamIdentity.TagKeys == null)
+        if (metricStreamIdentity.TagKeys != null)
         {
-            this.updateLongCallback = this.UpdateLong;
-            this.updateDoubleCallback = this.UpdateDouble;
-        }
-        else
-        {
-            this.updateLongCallback = this.UpdateLongCustomTags;
-            this.updateDoubleCallback = this.UpdateDoubleCustomTags;
 #if NET8_0_OR_GREATER
             var hs = FrozenSet.ToFrozenSet(metricStreamIdentity.TagKeys, StringComparer.Ordinal);
 #else
@@ -144,11 +136,9 @@ internal sealed class AggregatorStore
         {
             this.lookupAggregatorStore = this.LookupAggregatorStore;
         }
+
+        this.metricPointAggregator = MetricPointAggregatorFactory.GetAggregatorForAggregationType(aggType);
     }
-
-    private delegate void UpdateLongDelegate(long value, ReadOnlySpan<KeyValuePair<string, object?>> tags);
-
-    private delegate void UpdateDoubleDelegate(double value, ReadOnlySpan<KeyValuePair<string, object?>> tags);
 
     internal DateTimeOffset StartTimeExclusive { get; private set; }
 
@@ -167,7 +157,17 @@ internal sealed class AggregatorStore
     {
         try
         {
-            this.updateLongCallback(value, tags);
+            int metricPointIndex;
+            if (this.TagKeysInteresting == null)
+            {
+                metricPointIndex = this.FindMetricAggregatorsDefault(tags);
+            }
+            else
+            {
+                metricPointIndex = this.FindMetricAggregatorsCustomTag(tags);
+            }
+
+            this.UpdateLongMetricPoint(metricPointIndex, value, tags);
         }
         catch (Exception)
         {
@@ -180,7 +180,17 @@ internal sealed class AggregatorStore
     {
         try
         {
-            this.updateDoubleCallback(value, tags);
+            int metricPointIndex;
+            if (this.TagKeysInteresting == null)
+            {
+                metricPointIndex = this.FindMetricAggregatorsDefault(tags);
+            }
+            else
+            {
+                metricPointIndex = this.FindMetricAggregatorsCustomTag(tags);
+            }
+
+            this.UpdateDoubleMetricPoint(metricPointIndex, value, tags);
         }
         catch (Exception)
         {
@@ -914,20 +924,6 @@ internal sealed class AggregatorStore
         }
     }
 
-    private void UpdateLong(long value, ReadOnlySpan<KeyValuePair<string, object?>> tags)
-    {
-        var index = this.FindMetricAggregatorsDefault(tags);
-
-        this.UpdateLongMetricPoint(index, value, tags);
-    }
-
-    private void UpdateLongCustomTags(long value, ReadOnlySpan<KeyValuePair<string, object?>> tags)
-    {
-        var index = this.FindMetricAggregatorsCustomTag(tags);
-
-        this.UpdateLongMetricPoint(index, value, tags);
-    }
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void UpdateLongMetricPoint(int metricPointIndex, long value, ReadOnlySpan<KeyValuePair<string, object?>> tags)
     {
@@ -940,7 +936,11 @@ internal sealed class AggregatorStore
             if (this.EmitOverflowAttribute)
             {
                 this.InitializeOverflowTagPointIfNotInitialized();
-                this.metricPoints[1].Update(value, tags, offerExemplar);
+                this.metricPointAggregator.Update(
+                    ref this.metricPoints[1],
+                    value,
+                    tags,
+                    offerExemplar);
             }
             else if (Interlocked.CompareExchange(ref this.metricCapHitMessageLogged, 1, 0) == 0)
             {
@@ -950,21 +950,11 @@ internal sealed class AggregatorStore
             return;
         }
 
-        this.metricPoints[metricPointIndex].Update(value, tags, offerExemplar);
-    }
-
-    private void UpdateDouble(double value, ReadOnlySpan<KeyValuePair<string, object?>> tags)
-    {
-        var index = this.FindMetricAggregatorsDefault(tags);
-
-        this.UpdateDoubleMetricPoint(index, value, tags);
-    }
-
-    private void UpdateDoubleCustomTags(double value, ReadOnlySpan<KeyValuePair<string, object?>> tags)
-    {
-        var index = this.FindMetricAggregatorsCustomTag(tags);
-
-        this.UpdateDoubleMetricPoint(index, value, tags);
+        this.metricPointAggregator.Update(
+            ref this.metricPoints[metricPointIndex],
+            value,
+            tags,
+            offerExemplar);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -979,7 +969,11 @@ internal sealed class AggregatorStore
             if (this.EmitOverflowAttribute)
             {
                 this.InitializeOverflowTagPointIfNotInitialized();
-                this.metricPoints[1].Update(value, tags, offerExemplar);
+                this.metricPointAggregator.Update(
+                    ref this.metricPoints[1],
+                    value,
+                    tags,
+                    offerExemplar);
             }
             else if (Interlocked.CompareExchange(ref this.metricCapHitMessageLogged, 1, 0) == 0)
             {
@@ -989,7 +983,11 @@ internal sealed class AggregatorStore
             return;
         }
 
-        this.metricPoints[metricPointIndex].Update(value, tags, offerExemplar);
+        this.metricPointAggregator.Update(
+            ref this.metricPoints[metricPointIndex],
+            value,
+            tags,
+            offerExemplar);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

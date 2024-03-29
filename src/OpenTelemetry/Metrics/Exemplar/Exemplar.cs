@@ -7,7 +7,10 @@ using System.Collections.Frozen;
 using System.Diagnostics;
 #if EXPOSE_EXPERIMENTAL_FEATURES && NET8_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using OpenTelemetry.Internal;
+#else
+using System.Runtime.CompilerServices;
 #endif
 
 namespace OpenTelemetry.Metrics;
@@ -217,6 +220,9 @@ internal
         tags.CopyTo(this.tagStorage);
     }
 
+    // Note: This method is marked as NoInlining because the whole point of it
+    // is to avoid the initialization of SpinWait unless it is needed.
+    [MethodImpl(MethodImplOptions.NoInlining)]
     private void AcquireLockRare()
     {
         SpinWait spinWait = default;
