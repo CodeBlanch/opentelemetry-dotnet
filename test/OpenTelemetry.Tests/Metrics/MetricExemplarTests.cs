@@ -52,7 +52,14 @@ public class MetricExemplarTests : MetricTestsBase
         var meterProviderSdk = meterProvider as MeterProviderSdk;
 
         Assert.NotNull(meterProviderSdk);
-        Assert.Equal((ExemplarFilterType?)expectedValue, meterProviderSdk.ExemplarFilter);
+        if (expectedValue.HasValue)
+        {
+            Assert.Equal((ExemplarFilterType)expectedValue.Value, meterProviderSdk.ExemplarFilterMappings[MeterProviderBuilderSdk.DefaultMeterProviderExemplarFilterInstrumentName]);
+        }
+        else
+        {
+            Assert.False(meterProviderSdk.ExemplarFilterMappings.ContainsKey(MeterProviderBuilderSdk.DefaultMeterProviderExemplarFilterInstrumentName));
+        }
     }
 
     [Theory]

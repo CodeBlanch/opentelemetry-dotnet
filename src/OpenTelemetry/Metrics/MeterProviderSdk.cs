@@ -23,7 +23,7 @@ internal sealed class MeterProviderSdk : MeterProvider
     internal bool Disposed;
     internal bool EmitOverflowAttribute;
     internal bool ReclaimUnusedMetricPoints;
-    internal ExemplarFilterType? ExemplarFilter;
+    internal Dictionary<string, ExemplarFilterType> ExemplarFilterMappings;
     internal Action? OnCollectObservableInstruments;
 
     private readonly List<object> instrumentations = new();
@@ -59,7 +59,7 @@ internal sealed class MeterProviderSdk : MeterProvider
             configureProviderBuilder.ConfigureBuilder(serviceProvider!, state);
         }
 
-        this.ExemplarFilter = state.ExemplarFilter;
+        this.ExemplarFilterMappings = state.ExemplarFilterMappings;
 
         this.ApplySpecificationConfigurationKeys(serviceProvider!.GetRequiredService<IConfiguration>());
 
@@ -83,7 +83,7 @@ internal sealed class MeterProviderSdk : MeterProvider
                 state.CardinalityLimit,
                 this.EmitOverflowAttribute,
                 this.ReclaimUnusedMetricPoints,
-                this.ExemplarFilter);
+                this.ExemplarFilterMappings);
 
             if (this.reader == null)
             {
@@ -493,14 +493,13 @@ internal sealed class MeterProviderSdk : MeterProvider
 #if EXPOSE_EXPERIMENTAL_FEATURES
         if (configuration.TryGetStringValue(ExemplarFilterConfigKey, out var configValue))
         {
-            if (this.ExemplarFilter.HasValue)
+            if (this.ExemplarFilterMappings.TryGetValue(MeterProviderBuilderSdk.DefaultMeterProviderExemplarFilterInstrumentName, out var exemplarFilter))
             {
                 OpenTelemetrySdkEventSource.Log.MeterProviderSdkEvent(
-                    $"Exemplar filter configuration value '{configValue}' has been ignored because a value '{this.ExemplarFilter}' was set programmatically.");
+                    $"Exemplar filter configuration value '{configValue}' has been ignored because a value '{exemplarFilter}' was set programmatically.");
                 return;
             }
 
-            ExemplarFilterType? exemplarFilter;
             if (string.Equals("always_off", configValue, StringComparison.OrdinalIgnoreCase))
             {
                 exemplarFilter = ExemplarFilterType.AlwaysOff;
@@ -519,7 +518,7 @@ internal sealed class MeterProviderSdk : MeterProvider
                 return;
             }
 
-            this.ExemplarFilter = exemplarFilter;
+            this.ExemplarFilterMappings[MeterProviderBuilderSdk.DefaultMeterProviderExemplarFilterInstrumentName] = exemplarFilter;
 
             OpenTelemetrySdkEventSource.Log.MeterProviderSdkEvent($"Exemplar filter set to '{exemplarFilter}' from configuration.");
         }

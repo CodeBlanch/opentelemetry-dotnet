@@ -17,6 +17,7 @@ internal sealed class MeterProviderBuilderSdk : MeterProviderBuilder, IMeterProv
 {
     public const int DefaultMetricLimit = 1000;
     public const int DefaultCardinalityLimit = 2000;
+    public const string DefaultMeterProviderExemplarFilterInstrumentName = "@_SDK_MeterProvider_Default_@";
     private const string DefaultInstrumentationVersion = "1.0.0.0";
 
     private readonly IServiceProvider serviceProvider;
@@ -39,7 +40,7 @@ internal sealed class MeterProviderBuilderSdk : MeterProviderBuilder, IMeterProv
 
     public ResourceBuilder? ResourceBuilder { get; private set; }
 
-    public ExemplarFilterType? ExemplarFilter { get; private set; }
+    public Dictionary<string, ExemplarFilterType> ExemplarFilterMappings { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     public MeterProvider? Provider => this.meterProvider;
 
@@ -145,9 +146,11 @@ internal sealed class MeterProviderBuilderSdk : MeterProviderBuilder, IMeterProv
         return this;
     }
 
-    public MeterProviderBuilder SetExemplarFilter(ExemplarFilterType exemplarFilter)
+    public MeterProviderBuilder SetExemplarFilter(string instrumentName, ExemplarFilterType exemplarFilter)
     {
-        this.ExemplarFilter = exemplarFilter;
+        Debug.Assert(!string.IsNullOrEmpty(instrumentName), "instrumentName was null or empty");
+
+        this.ExemplarFilterMappings[instrumentName] = exemplarFilter;
 
         return this;
     }

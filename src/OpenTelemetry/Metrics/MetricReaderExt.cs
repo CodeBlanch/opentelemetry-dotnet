@@ -24,7 +24,7 @@ public abstract partial class MetricReader
     private int metricIndex = -1;
     private bool emitOverflowAttribute;
     private bool reclaimUnusedMetricPoints;
-    private ExemplarFilterType? exemplarFilter;
+    private Dictionary<string, ExemplarFilterType>? exemplarFilterMappings;
 
     internal static void DeactivateMetric(Metric metric)
     {
@@ -69,10 +69,16 @@ public abstract partial class MetricReader
             }
             else
             {
-                Metric? metric = null;
+                Metric? metric;
                 try
                 {
-                    metric = new Metric(metricStreamIdentity, this.GetAggregationTemporality(metricStreamIdentity.InstrumentType), this.cardinalityLimit, this.emitOverflowAttribute, this.reclaimUnusedMetricPoints, this.exemplarFilter);
+                    metric = new Metric(
+                        metricStreamIdentity,
+                        this.GetAggregationTemporality(metricStreamIdentity.InstrumentType),
+                        this.cardinalityLimit,
+                        this.emitOverflowAttribute,
+                        this.reclaimUnusedMetricPoints,
+                        this.ResolveExemplarFilterType(instrument!.Name));
                 }
                 catch (NotSupportedException nse)
                 {
@@ -150,7 +156,7 @@ public abstract partial class MetricReader
                         metricStreamConfig?.CardinalityLimit ?? this.cardinalityLimit,
                         this.emitOverflowAttribute,
                         this.reclaimUnusedMetricPoints,
-                        this.exemplarFilter,
+                        this.ResolveExemplarFilterType(instrument!.Name),
                         metricStreamConfig?.ExemplarReservoirFactory);
 
                     this.instrumentIdentityToMetric[metricStreamIdentity] = metric;
@@ -170,7 +176,7 @@ public abstract partial class MetricReader
         int cardinalityLimit,
         bool emitOverflowAttribute,
         bool reclaimUnusedMetricPoints,
-        ExemplarFilterType? exemplarFilter)
+        Dictionary<string, ExemplarFilterType> exemplarFilterMappings)
     {
         this.metricLimit = metricLimit;
         this.metrics = new Metric[metricLimit];
@@ -178,7 +184,7 @@ public abstract partial class MetricReader
         this.cardinalityLimit = cardinalityLimit;
         this.emitOverflowAttribute = emitOverflowAttribute;
         this.reclaimUnusedMetricPoints = reclaimUnusedMetricPoints;
-        this.exemplarFilter = exemplarFilter;
+        this.exemplarFilterMappings = exemplarFilterMappings;
     }
 
     private bool TryGetExistingMetric(in MetricStreamIdentity metricStreamIdentity, [NotNullWhen(true)] out Metric? existingMetric)
@@ -197,6 +203,21 @@ public abstract partial class MetricReader
                 "Metric instrument has the same name as an existing one but differs by description, unit, or instrument type. Measurements from this instrument will still be exported but may result in conflicts.",
                 "Either change the name of the instrument or use MeterProviderBuilder.AddView to resolve the conflict.");
         }
+    }
+
+    private ExemplarFilterType? ResolveExemplarFilterType(string instrumentName)
+    {
+        if (this.exemplarFilterMappings?.TryGetValue(instrumentName, out var exemplarFilter) == true)
+        {
+            return exemplarFilter;
+        }
+
+        if (this.exemplarFilterMappings?.TryGetValue(MeterProviderBuilderSdk.DefaultMeterProviderExemplarFilterInstrumentName, out exemplarFilter) == true)
+        {
+            return exemplarFilter;
+        }
+
+        return null;
     }
 
     private Batch<Metric> GetMetricsBatch()
