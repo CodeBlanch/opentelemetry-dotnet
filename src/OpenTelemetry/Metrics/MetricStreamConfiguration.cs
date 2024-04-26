@@ -139,6 +139,36 @@ public class MetricStreamConfiguration
 
 #if EXPOSE_EXPERIMENTAL_FEATURES
     /// <summary>
+    /// Gets or sets the <see cref="ExemplarFilterType"/> for the metric managed by the view.
+    /// </summary>
+    /// <remarks>
+    /// <inheritdoc cref="Exemplar"
+    /// path="/remarks/para[@experimental-warning='true']"/>
+    /// <para>Notes:
+    /// <list type="bullet">
+    /// <item>The configured <see cref="ExemplarFilterType"/> controls how
+    /// measurements will be offered to the <see cref="ExemplarReservoir"/> for
+    /// the metric managed by the view which is responsible for storing <see
+    /// cref="Exemplar"/>s.</item>
+    /// <item>Use <see cref="ExemplarFilterType.TraceBased"/> or <see
+    /// cref="ExemplarFilterType.AlwaysOn"/> to enable <see cref="Exemplar"/>s
+    /// for the metric managed by the view.</item>
+    /// </list>
+    /// </para>
+    /// Specification: <see
+    /// href="https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/sdk.md#stream-configuration"/>.
+    /// </remarks>
+#if NET8_0_OR_GREATER
+    [Experimental(DiagnosticDefinitions.ExemplarExperimentalApi, UrlFormat = DiagnosticDefinitions.ExperimentalApiUrlFormat)]
+#endif
+    public
+#else
+    internal
+#endif
+        ExemplarFilterType? ExemplarFilter { get; set; }
+
+#if EXPOSE_EXPERIMENTAL_FEATURES
+    /// <summary>
     /// Gets or sets a factory function used to generate an <see
     /// cref="ExemplarReservoir"/> for the metric managed by the view to use
     /// when storing <see cref="Exemplar"/>s.

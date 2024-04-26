@@ -150,7 +150,7 @@ public abstract partial class MetricReader
                         metricStreamConfig?.CardinalityLimit ?? this.cardinalityLimit,
                         this.emitOverflowAttribute,
                         this.reclaimUnusedMetricPoints,
-                        this.exemplarFilter,
+                        metricStreamConfig?.ExemplarFilter ?? this.exemplarFilter,
                         metricStreamConfig?.ExemplarReservoirFactory);
 
                     this.instrumentIdentityToMetric[metricStreamIdentity] = metric;
