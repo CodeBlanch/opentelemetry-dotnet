@@ -14,8 +14,8 @@ namespace OpenTelemetry.Metrics;
 public class MetricStreamConfiguration
 {
     private string? name;
-
     private int? cardinalityLimit = null;
+    private ExemplarFilterType? exemplarFilter;
 
     /// <summary>
     /// Gets the drop configuration.
@@ -165,7 +165,19 @@ public class MetricStreamConfiguration
 #else
     internal
 #endif
-        ExemplarFilterType? ExemplarFilter { get; set; }
+        ExemplarFilterType? ExemplarFilter
+    {
+        get => this.exemplarFilter;
+
+        set
+        {
+            this.exemplarFilter = value switch
+            {
+                ExemplarFilterType.AlwaysOn or ExemplarFilterType.AlwaysOff or ExemplarFilterType.TraceBased or null => value,
+                _ => throw new NotSupportedException($"ExemplarFilterType '{value}' is not supported."),
+            };
+        }
+    }
 
 #if EXPOSE_EXPERIMENTAL_FEATURES
     /// <summary>
