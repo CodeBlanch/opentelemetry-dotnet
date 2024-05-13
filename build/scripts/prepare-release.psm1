@@ -24,13 +24,13 @@ function CreatePullRequestToUpdateChangelogsAndPublicApis {
   }
 
   $body =
-  @"
-  Note: This PR was opened automatically by the [prepare release workflow](https://github.com/$gitRepository/actions/workflows/prepare-release.yml).
+@"
+Note: This PR was opened automatically by the [prepare release workflow](https://github.com/$gitRepository/actions/workflows/prepare-release.yml).
 
-  ## Changes
+## Changes
 
-  * CHANGELOG files updated for projects being released.
-  "@
+* CHANGELOG files updated for projects being released.
+"@
 
   # Update CHANGELOGs
   & ./build/scripts/update-changelogs.ps1 -minVerTagPrefix $minVerTagPrefix -version $version
