@@ -45,7 +45,6 @@ jobs:
         CreatePullRequestToUpdateChangelogsAndPublicApis `
           -minVerTagPrefix '${{ inputs.tag-prefix }}' `
           -version '${{ inputs.version }}' `
-          -gitRepository '${{ github.repository }}' `
           -targetBranch '${{ github.ref_name }}'
       env:
         GH_TOKEN: ${{ github.token }}
@@ -60,9 +59,6 @@ jobs:
 
     runs-on: windows-latest
 
-    env:
-      PULL_REQUEST_TITLE: ${{ github.event.pull_request.title }}
-
     steps:
     - name: check out code
       uses: actions/checkout@v4
@@ -70,36 +66,10 @@ jobs:
     - name: Lock GitHub Pull Request to prepare release
       shell: pwsh
       run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        Import-Module .\build\scripts\prepare-release.psm1
 
-        $match = [regex]::Match($env:PULL_REQUEST_TITLE, '^\[repo\] Prepare release (.*)$')
-        if ($match.Success -eq $false)
-        {
-            Write-Error 'Could not parse tag from PR title'
-            Return
-        }
-
-        $tag = $match.Groups[1].Value
-
-        git tag -a $tag -m "$tag" $prViewResponse.mergeCommit.oid 2>&1 | % ToString
-        if ($LASTEXITCODE -gt 0)
-        {
-            Write-Error 'git tag failure'
-            Return
-        }
-
-        $body =
-        @"
-        I noticed this PR was merged.
-
-        Post a comment with "/CreateReleaseTag" in the body if you would like me to create the release tag ``$tag`` for [the merge commit](https://github.com/${{ github.repository }}/commit/${{ github.event.pull_request.merge_commit_sha }}) and then trigger the package workflow.
-        "@
-
-        gh pr comment ${{ github.event.pull_request.number }} `
-          --body $body
-
-        gh pr lock ${{ github.event.pull_request.number }}
+        LockPullRequestAndPostNoticeToCreateReleaseTag `
+          -pullRequestNumber '${{ github.event.pull_request.number }}'
       env:
         GH_TOKEN: ${{ github.token }}
 
@@ -113,9 +83,6 @@ jobs:
       && github.event.issue.pull_request.merged_at
 
     runs-on: windows-latest
-
-    env:
-      PULL_REQUEST_TITLE: ${{ github.event.pull_request.title }}
 
     outputs:
       tag: ${{ steps.create-tag.outputs.tag }}
@@ -131,51 +98,11 @@ jobs:
       id: create-tag
       shell: pwsh
       run: |
-        git config user.name "github-actions[bot]"
-        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        Import-Module .\build\scripts\prepare-release.psm1
 
-        $prViewResponse = gh pr view ${{ github.event.issue.number }} --json mergeCommit,author | ConvertFrom-Json
-
-        if ($prViewResponse.author.is_bot -eq $false -or $prViewResponse.author.login -ne 'app/github-actions')
-        {
-            Write-Error 'PR author was unexpected'
-            Return
-        }
-
-        $match = [regex]::Match($env:PULL_REQUEST_TITLE, '^\[repo\] Prepare release (.*)$')
-        if ($match.Success -eq $false)
-        {
-            Write-Error 'Could not parse tag from PR title'
-            Return
-        }
-
-        $tag = $match.Groups[1].Value
-
-        git tag -a $tag -m "$tag" $prViewResponse.mergeCommit.oid 2>&1 | % ToString
-        if ($LASTEXITCODE -gt 0)
-        {
-            Write-Error 'git tag failure'
-            Return
-        }
-
-        git push origin $tag 2>&1 | % ToString
-        if ($LASTEXITCODE -gt 0)
-        {
-            Write-Error 'git push failure'
-            Return
-        }
-
-        gh pr unlock ${{ github.event.issue.number }}
-
-        $body =
-        @"
-        I just pushed the [$tag](https://github.com/${{ github.repository }}/releases/tag/$tag) tag.
-
-        The [package workflow](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) should begin momentarily.
-        "@
-
-        gh pr comment ${{ github.event.issue.number }} `
-          --body $body
+        $tag = CreateReleaseTag `
+          -pullRequestNumber '${{ github.event.issue.number }}' `
+          -actionRunId '${{ github.run_id }}'
 
         echo "tag=$tag" >> $env:GITHUB_OUTPUT
       env:
@@ -199,14 +126,11 @@ jobs:
     - name: Post notice when packages are ready
       shell: pwsh
       run: |
-        $body =
-        @"
-        The packages for [${{ needs.create-release-tag-unlock-pr-post-notice.outputs.tag }}](https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release-tag-unlock-pr-post-notice.outputs.tag }}) are now available: ${{ needs.invoke-package-workflow.outputs.artifact-url }}.
+        Import-Module .\build\scripts\prepare-release.psm1
 
-        Have a nice day!
-        "@
-
-        gh pr comment ${{ github.event.issue.number }} `
-          --body $body
+        PostPackagesReadyNotice `
+          -pullRequestNumber '${{ github.event.issue.number }}' `
+          -tag '${{ needs.create-release-tag-unlock-pr-post-notice.outputs.tag }}' `
+          -packagesUrl '${{ needs.invoke-package-workflow.outputs.artifact-url }}'
       env:
         GH_TOKEN: ${{ github.token }}

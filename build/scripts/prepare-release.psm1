@@ -1,6 +1,10 @@
 $gitHubBotUserName="github-actions[bot]"
 $gitHubBotEmail="41898282+github-actions[bot]@users.noreply.github.com"
 
+$repoViewResponse = gh repo view --json nameWithOwner | ConvertFrom-Json
+
+$gitRepository = $repoViewResponse.nameWithOwner
+
 function CreatePullRequestToUpdateChangelogsAndPublicApis {
   param(
     [Parameter(Mandatory=$true)][string]$minVerTagPrefix,
@@ -64,3 +68,121 @@ Note: This PR was opened automatically by the [prepare release workflow](https:/
 }
 
 Export-ModuleMember -Function CreatePullRequestToUpdateChangelogsAndPublicApis
+
+function LockPullRequestAndPostNoticeToCreateReleaseTag {
+  param(
+    [Parameter(Mandatory=$true)][string]$pullRequestNumber,
+    [Parameter()][string]$gitUserName=$gitHubBotUserName,
+    [Parameter()][string]$gitUserEmail=$gitHubBotEmail
+  )
+
+  git config user.name $gitUserName
+  git config user.email $gitUserEmail
+
+  $prViewResponse = gh pr view $pullRequestNumber --json mergeCommit,author,title | ConvertFrom-Json
+
+  if ($prViewResponse.author.is_bot -eq $false -or $prViewResponse.author.login -ne 'app/github-actions')
+  {
+      throw 'PR author was unexpected'
+  }
+
+  $match = [regex]::Match($prViewResponse.title, '^\[repo\] Prepare release (.*)$')
+  if ($match.Success -eq $false)
+  {
+      throw 'Could not parse tag from PR title'
+  }
+
+  $tag = $match.Groups[1].Value
+
+  git tag -a $tag -m "$tag" $prViewResponse.mergeCommit.oid 2>&1 | % ToString
+  if ($LASTEXITCODE -gt 0)
+  {
+      throw 'git tag failure'
+  }
+
+  $body =
+@"
+I noticed this PR was merged.
+
+Post a comment with "/CreateReleaseTag" in the body if you would like me to create the release tag ``$tag`` for [the merge commit](https://github.com/$gitRepository/commit/${prViewResponse.mergeCommit.oid}) and then trigger the package workflow.
+"@
+
+  gh pr comment $pullRequestNumber --body $body
+
+  gh pr lock $pullRequestNumber
+}
+
+Export-ModuleMember -Function LockPullRequestAndPostNoticeToCreateReleaseTag
+
+function CreateReleaseTag {
+  param(
+    [Parameter(Mandatory=$true)][string]$pullRequestNumber,
+    [Parameter(Mandatory=$true)][string]$actionRunId,
+    [Parameter()][string]$gitUserName=$gitHubBotUserName,
+    [Parameter()][string]$gitUserEmail=$gitHubBotEmail
+  )
+
+  git config user.name $gitUserName
+  git config user.email $gitUserEmail
+
+  $prViewResponse = gh pr view $pullRequestNumber --json mergeCommit,author,title | ConvertFrom-Json
+
+  if ($prViewResponse.author.is_bot -eq $false -or $prViewResponse.author.login -ne 'app/github-actions')
+  {
+      throw 'PR author was unexpected'
+  }
+
+  $match = [regex]::Match($prViewResponse.title, '^\[repo\] Prepare release (.*)$')
+  if ($match.Success -eq $false)
+  {
+      throw 'Could not parse tag from PR title'
+  }
+
+  $tag = $match.Groups[1].Value
+
+  git tag -a $tag -m "$tag" $prViewResponse.mergeCommit.oid 2>&1 | % ToString
+  if ($LASTEXITCODE -gt 0)
+  {
+      throw 'git tag failure'
+  }
+
+  git push origin $tag 2>&1 | % ToString
+  if ($LASTEXITCODE -gt 0)
+  {
+      throw 'git push failure'
+  }
+
+  gh pr unlock $pullRequestNumber
+
+  $body =
+@"
+I just pushed the [$tag](https://github.com/$gitRepository/releases/tag/$tag) tag.
+
+The [package workflow](https://github.com/$gitRepository/actions/runs/$actionRunId) should begin momentarily.
+"@
+
+  gh pr comment $pullRequestNumber --body $body
+
+  return $tag
+}
+
+Export-ModuleMember -Function CreateReleaseTag
+
+function PostPackagesReadyNotice {
+  param(
+    [Parameter(Mandatory=$true)][string]$pullRequestNumber,
+    [Parameter(Mandatory=$true)][string]$tag,
+    [Parameter(Mandatory=$true)][string]$packagesUrl
+  )
+
+  $body =
+@"
+The packages for [$tag](https://github.com/$gitRepository/releases/tag/$tag) are now available: $packagesUrl.
+
+Have a nice day!
+"@
+
+  gh pr comment $pullRequestNumber --body $body
+}
+
+Export-ModuleMember -Function PostPackagesReadyNotice
