@@ -119,7 +119,7 @@ function CreateReleaseTag {
     [Parameter(Mandatory=$true)][string]$actionRunId,
     [Parameter()][string]$gitUserName=$gitHubBotUserName,
     [Parameter()][string]$gitUserEmail=$gitHubBotEmail,
-    [Parameter()][ref][string]$tag
+    [Parameter()][ref]$tag
   )
 
   git config user.name $gitUserName
@@ -138,7 +138,7 @@ function CreateReleaseTag {
       throw 'Could not parse tag from PR title'
   }
 
-  $tag = $match.Groups[1].Value
+  $tagValue = $match.Groups[1].Value
 
   $commit = $prViewResponse.mergeCommit.oid
   if ([string]::IsNullOrEmpty($commit) -eq $true)
@@ -146,13 +146,13 @@ function CreateReleaseTag {
       throw 'Could not find merge commit'
   }
 
-  git tag -a $tag -m "$tag" $commit 2>&1 | % ToString
+  git tag -a $tagValue -m "$tagValue" $commit 2>&1 | % ToString
   if ($LASTEXITCODE -gt 0)
   {
       throw 'git tag failure'
   }
 
-  git push origin $tag 2>&1 | % ToString
+  git push origin $tagValue 2>&1 | % ToString
   if ($LASTEXITCODE -gt 0)
   {
       throw 'git push failure'
@@ -162,12 +162,14 @@ function CreateReleaseTag {
 
   $body =
 @"
-I just pushed the [$tag](https://github.com/$gitRepository/releases/tag/$tag) tag.
+I just pushed the [$tagValue](https://github.com/$gitRepository/releases/tag/$tagValue) tag.
 
 The [package workflow](https://github.com/$gitRepository/actions/runs/$actionRunId) should begin momentarily.
 "@
 
   gh pr comment $pullRequestNumber --body $body
+
+  $tag.value = $tagValue
 }
 
 Export-ModuleMember -Function CreateReleaseTag
