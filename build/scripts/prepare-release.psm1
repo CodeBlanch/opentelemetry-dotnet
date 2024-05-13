@@ -8,7 +8,7 @@ function CreatePullRequestToUpdateChangelogsAndPublicApis {
     [Parameter(Mandatory=$true)][string]$gitRepository,
     [Parameter()][string]$gitUserName=$gitHubBotUserName,
     [Parameter()][string]$gitUserEmail=$gitHubBotEmail,
-    [Parameter()][string]$targetBranch="main",
+    [Parameter()][string]$targetBranch="main"
   )
 
   $tag="${minVerTagPrefix}${version}"
