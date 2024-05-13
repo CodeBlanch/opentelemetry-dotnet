@@ -118,7 +118,8 @@ function CreateReleaseTag {
     [Parameter(Mandatory=$true)][string]$pullRequestNumber,
     [Parameter(Mandatory=$true)][string]$actionRunId,
     [Parameter()][string]$gitUserName=$gitHubBotUserName,
-    [Parameter()][string]$gitUserEmail=$gitHubBotEmail
+    [Parameter()][string]$gitUserEmail=$gitHubBotEmail,
+    [Parameter()][ref][string]$tag
   )
 
   git config user.name $gitUserName
@@ -167,8 +168,6 @@ The [package workflow](https://github.com/$gitRepository/actions/runs/$actionRun
 "@
 
   gh pr comment $pullRequestNumber --body $body
-
-  return $tag
 }
 
 Export-ModuleMember -Function CreateReleaseTag

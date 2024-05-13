@@ -100,9 +100,12 @@ jobs:
       run: |
         Import-Module .\build\scripts\prepare-release.psm1
 
-        $tag = CreateReleaseTag `
+        $tag = ''
+
+        CreateReleaseTag `
           -pullRequestNumber '${{ github.event.issue.number }}' `
-          -actionRunId '${{ github.run_id }}'
+          -actionRunId '${{ github.run_id }}' `
+          -tag ([ref]$tag)
 
         echo "tag=$tag" >> $env:GITHUB_OUTPUT
       env:
