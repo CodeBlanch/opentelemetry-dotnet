@@ -93,17 +93,17 @@ function LockPullRequestAndPostNoticeToCreateReleaseTag {
 
   $tag = $match.Groups[1].Value
 
-  git tag -a $tag -m "$tag" $prViewResponse.mergeCommit.oid 2>&1 | % ToString
-  if ($LASTEXITCODE -gt 0)
+  $commit = $prViewResponse.mergeCommit.oid
+  if ([string]::IsNullOrEmpty($commit) -eq $true)
   {
-      throw 'git tag failure'
+      throw 'Could not find merge commit'
   }
 
   $body =
 @"
 I noticed this PR was merged.
 
-Post a comment with "/CreateReleaseTag" in the body if you would like me to create the release tag ``$tag`` for [the merge commit](https://github.com/$gitRepository/commit/${prViewResponse.mergeCommit.oid}) and then trigger the package workflow.
+Post a comment with "/CreateReleaseTag" in the body if you would like me to create the release tag ``$tag`` for [the merge commit](https://github.com/$gitRepository/commit/$commit) and then trigger the package workflow.
 "@
 
   gh pr comment $pullRequestNumber --body $body
@@ -139,7 +139,13 @@ function CreateReleaseTag {
 
   $tag = $match.Groups[1].Value
 
-  git tag -a $tag -m "$tag" $prViewResponse.mergeCommit.oid 2>&1 | % ToString
+  $commit = $prViewResponse.mergeCommit.oid
+  if ([string]::IsNullOrEmpty($commit) -eq $true)
+  {
+      throw 'Could not find merge commit'
+  }
+
+  git tag -a $tag -m "$tag" $commit 2>&1 | % ToString
   if ($LASTEXITCODE -gt 0)
   {
       throw 'git tag failure'
