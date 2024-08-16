@@ -1,11 +1,41 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
+using System.ComponentModel;
+using System.Reflection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OpenTelemetry.Internal;
 
 namespace OpenTelemetry.Resources;
+
+/// <summary>
+/// Describes the detection type to use when auto-resolving <c>service.version</c> when calling <see
+/// cref="ResourceBuilderExtensions.AddService(ResourceBuilder, string, string?, string?, bool, string?, ServiceResourceVersionDetectionType?, Assembly?)"/>.
+/// </summary>
+public enum ServiceResourceVersionDetectionType
+{
+    /// <summary>
+    /// Version taken from <see cref="AssemblyVersionAttribute"/>.
+    /// </summary>
+    AssemblyVersion,
+
+    /// <summary>
+    /// Version taken from <see cref="AssemblyFileVersionAttribute"/>.
+    /// </summary>
+    AssemblyFileVersion,
+
+    /// <summary>
+    /// Version taken from <see cref="AssemblyInformationalVersionAttribute"/>.
+    /// </summary>
+    AssemblyInformationVersion,
+
+    /// <summary>
+    /// Version taken from <see cref="AssemblyInformationalVersionAttribute"/>
+    /// with any extra git commit information removed.
+    /// </summary>
+    PackageVersion
+}
 
 /// <summary>
 /// Contains extension methods for building <see cref="Resource"/>s.
@@ -34,13 +64,60 @@ public static class ResourceBuilderExtensions
     /// <param name="autoGenerateServiceInstanceId">Specify <see langword="true"/> to automatically generate a <see cref="Guid"/> for <paramref name="serviceInstanceId"/> if not supplied.</param>
     /// <param name="serviceInstanceId">Optional unique identifier of the service instance.</param>
     /// <returns>Returns <see cref="ResourceBuilder"/> for chaining.</returns>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public static ResourceBuilder AddService(
+        this ResourceBuilder resourceBuilder,
+        string serviceName,
+        string? serviceNamespace,
+        string? serviceVersion,
+        bool autoGenerateServiceInstanceId,
+        string? serviceInstanceId)
+        => AddService(
+            resourceBuilder,
+            serviceName,
+            serviceNamespace,
+            serviceVersion,
+            autoGenerateServiceInstanceId,
+            serviceInstanceId,
+            autoServiceVersionDetectionType: null,
+            autoServiceVersionDetectionTargetAssembly: null);
+
+    /// <summary>
+    /// Adds service information to a <see cref="ResourceBuilder"/>
+    /// following <a
+    /// href="https://github.com/open-telemetry/opentelemetry-specification/tree/main/specification/resource/semantic_conventions#service">semantic
+    /// conventions</a>.
+    /// </summary>
+    /// <param name="resourceBuilder"><see cref="ResourceBuilder"/>.</param>
+    /// <param name="serviceName">Name of the service.</param>
+    /// <param name="serviceNamespace">Optional namespace of the
+    /// service.</param>
+    /// <param name="serviceVersion">Optional version of the service.</param>
+    /// <param name="autoGenerateServiceInstanceId">Specify <see
+    /// langword="true"/> to automatically generate a <see cref="Guid"/> for
+    /// <paramref name="serviceInstanceId"/> if not supplied.</param>
+    /// <param name="serviceInstanceId">Optional unique identifier of the
+    /// service instance.</param>
+    /// <param name="autoServiceVersionDetectionType">Optional <see
+    /// cref="ServiceResourceVersionDetectionType"/> to use for automatic
+    /// population of service version when <paramref name="serviceVersion"/> is
+    /// not supplied.</param>
+    /// <param name="autoServiceVersionDetectionTargetAssembly">Optional <see
+    /// cref="Assembly"/> to use for automatic population of service version
+    /// when <paramref name="serviceVersion"/> is not supplied and <paramref
+    /// name="autoServiceVersionDetectionType"/> is set. By default the target
+    /// assembly is resolved by calling <see
+    /// cref="Assembly.GetEntryAssembly"/>.</param>
+    /// <returns>Returns <see cref="ResourceBuilder"/> for chaining.</returns>
     public static ResourceBuilder AddService(
         this ResourceBuilder resourceBuilder,
         string serviceName,
         string? serviceNamespace = null,
         string? serviceVersion = null,
         bool autoGenerateServiceInstanceId = true,
-        string? serviceInstanceId = null)
+        string? serviceInstanceId = null,
+        ServiceResourceVersionDetectionType? autoServiceVersionDetectionType = null,
+        Assembly? autoServiceVersionDetectionTargetAssembly = null)
     {
         Dictionary<string, object> resourceAttributes = new Dictionary<string, object>();
 
@@ -51,6 +128,30 @@ public static class ResourceBuilderExtensions
         if (!string.IsNullOrEmpty(serviceNamespace))
         {
             resourceAttributes.Add(ResourceSemanticConventions.AttributeServiceNamespace, serviceNamespace!);
+        }
+
+        if (string.IsNullOrEmpty(serviceVersion) && autoServiceVersionDetectionType.HasValue)
+        {
+            autoServiceVersionDetectionTargetAssembly ??= Assembly.GetEntryAssembly();
+
+            if (autoServiceVersionDetectionTargetAssembly != null)
+            {
+                switch (autoServiceVersionDetectionType.Value)
+                {
+                    case ServiceResourceVersionDetectionType.AssemblyVersion:
+                        serviceVersion = autoServiceVersionDetectionTargetAssembly.GetCustomAttribute<AssemblyVersionAttribute>()?.Version;
+                        break;
+                    case ServiceResourceVersionDetectionType.AssemblyFileVersion:
+                        serviceVersion = autoServiceVersionDetectionTargetAssembly.GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
+                        break;
+                    case ServiceResourceVersionDetectionType.AssemblyInformationVersion:
+                        serviceVersion = autoServiceVersionDetectionTargetAssembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+                        break;
+                    case ServiceResourceVersionDetectionType.PackageVersion:
+                        autoServiceVersionDetectionTargetAssembly.TryGetPackageVersion(out serviceVersion);
+                        break;
+                }
+            }
         }
 
         if (!string.IsNullOrEmpty(serviceVersion))
