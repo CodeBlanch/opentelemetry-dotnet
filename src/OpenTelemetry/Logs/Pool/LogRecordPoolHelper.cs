@@ -15,7 +15,7 @@ internal static class LogRecordPoolHelper
         {
             if (attributeStorage.Count > DefaultMaxNumberOfAttributes)
             {
-                // Don't allow the pool to grow unconstained.
+                // Don't allow the pool to grow unconstrained.
                 logRecord.AttributeStorage = null;
             }
             else
@@ -26,12 +26,39 @@ internal static class LogRecordPoolHelper
             }
         }
 
+        var attributeStorageCleanup = logRecord.AttributeStorageCleanup;
+        if (attributeStorageCleanup != null)
+        {
+            foreach (var attribute in attributeStorageCleanup)
+            {
+                try
+                {
+                    attribute.Dispose();
+                }
+                catch
+                {
+                }
+            }
+
+            if (attributeStorageCleanup.Count > DefaultMaxNumberOfAttributes)
+            {
+                // Don't allow the pool to grow unconstrained.
+                logRecord.AttributeStorageCleanup = null;
+            }
+            else
+            {
+                /* List<T>.Clear sets the count/size to 0 but it maintains the
+                underlying array (capacity). */
+                attributeStorageCleanup.Clear();
+            }
+        }
+
         var scopeStorage = logRecord.ScopeStorage;
         if (scopeStorage != null)
         {
             if (scopeStorage.Count > DefaultMaxNumberOfScopes)
             {
-                // Don't allow the pool to grow unconstained.
+                // Don't allow the pool to grow unconstrained.
                 logRecord.ScopeStorage = null;
             }
             else

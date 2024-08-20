@@ -20,6 +20,7 @@ public sealed class LogRecord
     internal LogRecordILoggerData ILoggerData;
     internal IReadOnlyList<KeyValuePair<string, object?>>? AttributeData;
     internal List<KeyValuePair<string, object?>>? AttributeStorage;
+    internal List<IDisposable>? AttributeStorageCleanup;
     internal List<object?>? ScopeStorage;
     internal LogRecordSource Source = LogRecordSource.CreatedManually;
     internal int PoolReferenceCount = int.MaxValue;
@@ -511,14 +512,41 @@ public sealed class LogRecord
             return;
         }
 
-        var attributeStorage = this.AttributeStorage ??= new List<KeyValuePair<string, object?>>(attributes.Count);
+        var attributeStorage = this.AttributeStorage;
+        if (attributeStorage == null)
+        {
+            attributeStorage = this.AttributeStorage = new List<KeyValuePair<string, object?>>(attributes.Count);
+        }
+#if NET6_0_OR_GREATER
+        else
+        {
+            attributeStorage.EnsureCapacity(attributes.Count);
+        }
+#endif
 
-        // Note: AddRange here will copy all of the KeyValuePairs from
-        // attributes to AttributeStorage. This "captures" the state and
-        // fixes issues where the values are generated at enumeration time
-        // like
+        // Note: Copy all of the KeyValuePairs from attributes to
+        // AttributeStorage. This "captures" the state and fixes issues where
+        // the values are generated at enumeration time like
         // https://github.com/open-telemetry/opentelemetry-dotnet/issues/2905.
-        attributeStorage.AddRange(attributes);
+        foreach (var attribute in attributes)
+        {
+            if (attribute.Value is IDisposable
+                && attribute.Value is ICloneable cloneable)
+            {
+                object value = cloneable.Clone();
+
+                if (value is IDisposable disposable)
+                {
+                    (this.AttributeStorageCleanup ??= new()).Add(disposable);
+                }
+
+                attributeStorage.Add(new(attribute.Key, value));
+            }
+            else
+            {
+                attributeStorage.Add(attribute);
+            }
+        }
 
         this.AttributeData = attributeStorage;
     }
