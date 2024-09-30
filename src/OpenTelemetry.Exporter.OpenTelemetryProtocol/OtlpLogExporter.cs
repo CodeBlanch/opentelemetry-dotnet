@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenTelemetry.Exporter.OpenTelemetryProtocol.Implementation;
 using OpenTelemetry.Exporter.OpenTelemetryProtocol.Implementation.Transmission;
 using OpenTelemetry.Logs;
@@ -16,6 +18,7 @@ namespace OpenTelemetry.Exporter;
 /// </summary>
 public sealed class OtlpLogExporter : BaseExporter<LogRecord>
 {
+    private readonly ILogger<OtlpLogExporter> logger;
     private readonly OtlpExporterTransmissionHandler<OtlpCollector.ExportLogsServiceRequest> transmissionHandler;
     private readonly OtlpLogRecordTransformer otlpLogRecordTransformer;
 
@@ -26,26 +29,34 @@ public sealed class OtlpLogExporter : BaseExporter<LogRecord>
     /// </summary>
     /// <param name="options">Configuration options for the exporter.</param>
     public OtlpLogExporter(OtlpExporterOptions options)
-        : this(options, sdkLimitOptions: new(), experimentalOptions: new(), transmissionHandler: null)
+        : this(new NullLogger<OtlpLogExporter>(), options, sdkLimitOptions: new(), experimentalOptions: new(), transmissionHandler: null)
     {
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="OtlpLogExporter"/> class.
     /// </summary>
+    /// <param name="logger"><see cref="ILogger{TCategoryName}"/>.</param>
     /// <param name="exporterOptions"><see cref="OtlpExporterOptions"/>.</param>
     /// <param name="sdkLimitOptions"><see cref="SdkLimitOptions"/>.</param>
     /// <param name="experimentalOptions"><see cref="ExperimentalOptions"/>.</param>
     /// <param name="transmissionHandler"><see cref="OtlpExporterTransmissionHandler{T}"/>.</param>
     internal OtlpLogExporter(
+        ILogger<OtlpLogExporter> logger,
         OtlpExporterOptions exporterOptions,
         SdkLimitOptions sdkLimitOptions,
         ExperimentalOptions experimentalOptions,
         OtlpExporterTransmissionHandler<OtlpCollector.ExportLogsServiceRequest>? transmissionHandler = null)
     {
+        Debug.Assert(logger != null, "logger was null");
         Debug.Assert(exporterOptions != null, "exporterOptions was null");
         Debug.Assert(sdkLimitOptions != null, "sdkLimitOptions was null");
         Debug.Assert(experimentalOptions != null, "experimentalOptions was null");
+
+        this.logger = logger!;
+
+        // temp for testing
+        this.logger.LogInformation("Hello world!");
 
         this.transmissionHandler = transmissionHandler ?? exporterOptions!.GetLogsExportTransmissionHandler(experimentalOptions!);
 
@@ -74,7 +85,8 @@ public sealed class OtlpLogExporter : BaseExporter<LogRecord>
         }
         catch (Exception ex)
         {
-            OpenTelemetryProtocolExporterEventSource.Log.ExportMethodException(ex);
+            // TODO: How do we prevent this from triggering another export and causing a loop?
+            this.logger.LogError(exception: ex, eventId: new(4), message: "Unknown error in export method.");
             return ExportResult.Failure;
         }
         finally
