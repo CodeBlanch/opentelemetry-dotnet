@@ -98,7 +98,7 @@ public class ZipkinExporterTests : IDisposable
     [InlineData(false, null)]
     [InlineData(true, "zipkin")]
     [InlineData(false, "zipkin")]
-    public void AddZipkinExporterBatchOptionsChangedTest(bool overrideDefaults, string name)
+    public void AddZipkinExporterBatchOptionsChangedTest(bool overrideDefaults, string? name)
     {
         using var sdk = OpenTelemetrySdk.Create(builder => builder
             .WithTracing(tracing => tracing
