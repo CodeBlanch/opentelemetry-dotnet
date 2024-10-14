@@ -43,7 +43,7 @@ public class CompositeTextMapPropagator : TextMapPropagator
         }
         else
         {
-            ISet<string> fields = this.propagators[0].Fields;
+            ISet<string>? fields = this.propagators[0].Fields;
 
             var output = fields is not null
                 ? new HashSet<string>(fields)
@@ -66,7 +66,7 @@ public class CompositeTextMapPropagator : TextMapPropagator
     public override ISet<string> Fields => this.allFields;
 
     /// <inheritdoc/>
-    public override PropagationContext Extract<T>(PropagationContext context, T carrier, Func<T, string, IEnumerable<string>> getter)
+    public override PropagationContext Extract<T>(PropagationContext context, T carrier, Func<T, string, IEnumerable<string>?> getter)
     {
         for (int i = 0; i < this.propagators.Count; i++)
         {

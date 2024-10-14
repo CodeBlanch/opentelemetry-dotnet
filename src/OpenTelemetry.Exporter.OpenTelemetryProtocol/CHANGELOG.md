@@ -1,11 +1,34 @@
 # Changelog
 
+This file contains individual changes for the
+OpenTelemetry.Exporter.OpenTelemetryProtocol package. For highlights and
+announcements covering all components see: [Release
+Notes](../../RELEASENOTES.md).
+
 ## Unreleased
+
+## 1.10.0-beta.1
+
+Released 2024-Sep-30
 
 * **Breaking change**: Non-primitive attribute (logs) and tag (traces) values
   converted using `Convert.ToString` will now format using
   `CultureInfo.InvariantCulture`.
   ([#5700](https://github.com/open-telemetry/opentelemetry-dotnet/pull/5700))
+
+* Fixed an issue causing `NotSupportedException`s to be thrown on startup when
+  `AddOtlpExporter` registration extensions are called while using custom
+  dependency injection containers which automatically create services (Unity,
+  Grace, etc.).
+  ([#5808](https://github.com/open-telemetry/opentelemetry-dotnet/pull/5808))
+
+  * Fixed `PlatformNotSupportedException`s being thrown during export when running
+  on mobile platforms which caused telemetry to be dropped silently.
+  ([#5821](https://github.com/open-telemetry/opentelemetry-dotnet-contrib/pull/5821))
+
+* Updated `Microsoft.Extensions.Hosting.Abstractions` package
+  version to `9.0.0-rc.1.24431.7`.
+  ([#5853](https://github.com/open-telemetry/opentelemetry-dotnet/pull/5853))
 
 ## 1.9.0
 

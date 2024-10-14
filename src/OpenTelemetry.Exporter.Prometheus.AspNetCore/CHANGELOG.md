@@ -1,6 +1,14 @@
 # Changelog
 
+This file contains individual changes for the
+OpenTelemetry.Exporter.Prometheus.AspNetCore package. For highlights and
+announcements covering all components see: [Release
+Notes](../../RELEASENOTES.md).
+
 ## Unreleased
+
+* Added meter-level tags to Prometheus exporter
+  ([#5837](https://github.com/open-telemetry/opentelemetry-dotnet/pull/5837))
 
 ## 1.9.0-beta.2
 

@@ -7,9 +7,16 @@ namespace OpenTelemetry.Context.Propagation.Tests;
 
 public class TracestateUtilsTests
 {
+    [Fact]
+    public void NullTracestate()
+    {
+        var tracestateEntries = new List<KeyValuePair<string, string>>();
+        Assert.False(TraceStateUtilsNew.AppendTraceState(null!, tracestateEntries));
+        Assert.Empty(tracestateEntries);
+    }
+
     [Theory]
     [InlineData("")]
-    [InlineData(null)]
     [InlineData(" ")]
     [InlineData("\t")]
     public void EmptyTracestate(string tracestate)

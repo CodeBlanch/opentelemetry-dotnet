@@ -343,7 +343,7 @@ class MySampler : Sampler
 {
     public override SamplingResult ShouldSample(in SamplingParameters samplingParameters)
     {
-        return new SamplingResult(SamplingDecision.RecordAndSampled);
+        return new SamplingResult(SamplingDecision.RecordAndSample);
     }
 }
 ```

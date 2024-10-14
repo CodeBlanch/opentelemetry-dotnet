@@ -1,8 +1,6 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
-#nullable enable
-
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -19,12 +17,12 @@ namespace System.Runtime.CompilerServices
     [AttributeUsage(AttributeTargets.Parameter, AllowMultiple = false, Inherited = false)]
     internal sealed class CallerArgumentExpressionAttribute : Attribute
     {
-        public CallerArgumentExpressionAttribute(string parameterName)
+        public CallerArgumentExpressionAttribute(string? parameterName)
         {
             this.ParameterName = parameterName;
         }
 
-        public string ParameterName { get; }
+        public string? ParameterName { get; }
     }
 }
 #endif

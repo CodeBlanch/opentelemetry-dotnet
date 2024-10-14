@@ -23,10 +23,10 @@ public static class ConsoleExporterLoggingExtensions
     /// Adds Console exporter with OpenTelemetryLoggerOptions.
     /// </summary>
     /// <param name="loggerOptions"><see cref="OpenTelemetryLoggerOptions"/> options to use.</param>
-    /// <param name="configure">Callback action for configuring <see cref="ConsoleExporterOptions"/>.</param>
+    /// <param name="configure">Optional callback action for configuring <see cref="ConsoleExporterOptions"/>.</param>
     /// <returns>The instance of <see cref="OpenTelemetryLoggerOptions"/> to chain the calls.</returns>
     // TODO: [Obsolete("Call LoggerProviderBuilder.AddConsoleExporter instead this method will be removed in a future version.")]
-    public static OpenTelemetryLoggerOptions AddConsoleExporter(this OpenTelemetryLoggerOptions loggerOptions, Action<ConsoleExporterOptions> configure)
+    public static OpenTelemetryLoggerOptions AddConsoleExporter(this OpenTelemetryLoggerOptions loggerOptions, Action<ConsoleExporterOptions>? configure)
     {
         Guard.ThrowIfNull(loggerOptions);
 
@@ -59,13 +59,13 @@ public static class ConsoleExporterLoggingExtensions
     /// Adds Console exporter with LoggerProviderBuilder.
     /// </summary>
     /// <param name="loggerProviderBuilder"><see cref="LoggerProviderBuilder"/>.</param>
-    /// <param name="name">Name which is used when retrieving options.</param>
-    /// <param name="configure">Callback action for configuring <see cref="ConsoleExporterOptions"/>.</param>
+    /// <param name="name">Optional name which is used when retrieving options.</param>
+    /// <param name="configure">Optional callback action for configuring <see cref="ConsoleExporterOptions"/>.</param>
     /// <returns>The supplied instance of <see cref="LoggerProviderBuilder"/> to chain the calls.</returns>
     public static LoggerProviderBuilder AddConsoleExporter(
         this LoggerProviderBuilder loggerProviderBuilder,
-        string name,
-        Action<ConsoleExporterOptions> configure)
+        string? name,
+        Action<ConsoleExporterOptions>? configure)
     {
         Guard.ThrowIfNull(loggerProviderBuilder);
 

@@ -27,7 +27,7 @@ public class TestPropagator : TextMapPropagator
 
     public override ISet<string> Fields => new HashSet<string>() { this.idHeaderName, this.stateHeaderName };
 
-    public override PropagationContext Extract<T>(PropagationContext context, T carrier, Func<T, string, IEnumerable<string>> getter)
+    public override PropagationContext Extract<T>(PropagationContext context, T carrier, Func<T, string, IEnumerable<string>?> getter)
     {
         Interlocked.Increment(ref this.extractCount);
 
@@ -37,7 +37,7 @@ public class TestPropagator : TextMapPropagator
         }
 
         var id = getter(carrier, this.idHeaderName);
-        if (!id.Any())
+        if (id == null || !id.Any())
         {
             return context;
         }
