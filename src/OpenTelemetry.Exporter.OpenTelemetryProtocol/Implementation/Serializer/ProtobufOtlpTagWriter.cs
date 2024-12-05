@@ -1,6 +1,8 @@
 // Copyright The OpenTelemetry Authors
 // SPDX-License-Identifier: Apache-2.0
 
+using System;
+using System.Diagnostics;
 using OpenTelemetry.Internal;
 
 namespace OpenTelemetry.Exporter.OpenTelemetryProtocol.Implementation.Serializer;
@@ -61,7 +63,6 @@ internal sealed class ProtobufOtlpTagWriter : TagWriter<ProtobufOtlpTagWriter.Ot
 
     protected override void WriteArrayTag(ref OtlpTagWriterState state, string key, ref OtlpTagWriterArrayState value)
     {
-        // TODO: Expand OtlpTagWriterArrayState.Buffer on IndexOutOfRangeException.
         // Write KeyValue tag
         state.WritePosition = ProtobufSerializer.WriteStringWithTag(state.Buffer, state.WritePosition, ProtobufOtlpCommonFieldNumberConstants.KeyValue_Key, key);
 
@@ -97,6 +98,8 @@ internal sealed class ProtobufOtlpTagWriter : TagWriter<ProtobufOtlpTagWriter.Ot
 
     private sealed class OtlpArrayTagWriter : ArrayTagWriter<OtlpTagWriterArrayState>
     {
+        private const int MaxBufferSize = 1024 * 1024;
+
         [ThreadStatic]
         private static byte[]? threadBuffer;
 
@@ -148,6 +151,30 @@ internal sealed class ProtobufOtlpTagWriter : TagWriter<ProtobufOtlpTagWriter.Ot
 
         public override void EndWriteArray(ref OtlpTagWriterArrayState state)
         {
+        }
+
+        public override bool TryResize()
+        {
+            var buffer = threadBuffer;
+
+            Debug.Assert(buffer != null, "buffer was null");
+
+            if (buffer!.Length >= MaxBufferSize)
+            {
+                OpenTelemetryProtocolExporterEventSource.Log.BufferExceededMaxSize(nameof(OtlpArrayTagWriter), buffer.Length);
+                return false;
+            }
+
+            try
+            {
+                threadBuffer = new byte[buffer.Length * 2];
+                return true;
+            }
+            catch (OutOfMemoryException)
+            {
+                OpenTelemetryProtocolExporterEventSource.Log.BufferResizeFailedDueToMemory(nameof(OtlpArrayTagWriter));
+                return false;
+            }
         }
     }
 }
