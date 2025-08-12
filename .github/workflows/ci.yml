@@ -18,7 +18,7 @@ jobs:
     outputs:
       changes: ${{ steps.changes.outputs.changes }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: AurorNZ/paths-filter@v4
       id: changes
       with:
@@ -113,7 +113,7 @@ jobs:
       matrix:
         version: [ net8.0, net9.0 ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Run OTLP Exporter docker compose
         run: docker compose --file=test/OpenTelemetry.Exporter.OpenTelemetryProtocol.Tests/IntegrationTest/docker-compose.yml --file=build/docker-compose.${{ matrix.version }}.yml --project-directory=. up --exit-code-from=tests --build
 
@@ -131,7 +131,7 @@ jobs:
       matrix:
         version: [ net8.0, net9.0 ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Run W3C Trace Context docker compose
         run: docker compose --file=test/OpenTelemetry.Instrumentation.W3cTraceContext.Tests/docker-compose.yml --file=build/docker-compose.${{ matrix.version }}.yml --project-directory=. up --exit-code-from=tests --build
 

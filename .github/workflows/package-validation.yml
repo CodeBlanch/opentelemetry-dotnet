@@ -10,7 +10,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         # Note: By default GitHub only fetches 1 commit. MinVer needs to find
         # the version tag which is typically NOT on the first commit so we
@@ -27,7 +27,7 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
       with:
         # Note: By default GitHub only fetches 1 commit. MinVer needs to find
         # the version tag which is typically NOT on the first commit so we

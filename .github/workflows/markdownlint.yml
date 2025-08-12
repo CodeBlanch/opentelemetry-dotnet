@@ -11,7 +11,7 @@ jobs:
 
     steps:
     - name: check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: run markdownlint
       uses: DavidAnson/markdownlint-cli2-action@v19.1.0
