@@ -84,7 +84,7 @@ jobs:
         token: ${{ secrets[needs.automation.outputs.token-secret-name] }}
 
     - name: Setup dotnet
-      uses: actions/setup-dotnet@v4
+      uses: actions/setup-dotnet@v5
 
     - name: Create GitHub Pull Request to update stable build version in props
       if: |
