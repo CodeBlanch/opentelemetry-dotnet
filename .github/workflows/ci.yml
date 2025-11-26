@@ -19,7 +19,7 @@ jobs:
       changes: ${{ steps.changes.outputs.changes }}
     steps:
     - uses: actions/checkout@v4
-    - uses: AurorNZ/paths-filter@v4
+    - uses: AurorNZ/paths-filter@v5
       id: changes
       with:
         filters: |
